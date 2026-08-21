@@ -1,0 +1,19 @@
+key,value
+store_name,อิ่มใจ (ImJai) Cafe & Kitchen
+business_type,ร้านอาหารและเครื่องดื่ม (Cafe & Kitchen) — นั่งทานที่ร้าน / สั่งกลับบ้าน / เดลิเวอรี
+ai_name,น้องอิ่มใจ
+main_channel,LINE Official Account: @imjaicafe
+branch_address,สาขา 1: 88/12 ถ.สุขุมวิท แขวงคลองตัน เขตวัฒนา กรุงเทพฯ 10110
+opening_hours,ทุกวัน 07:00–20:00 น. (ครัวปิดรับออเดอร์ 19:30 น.)
+contact_phone,02-123-4567 / LINE @imjaicafe
+payment_methods,"เงินสด, พร้อมเพย์/QR, บัตรเครดิต/เดบิต, Rabbit LINE Pay"
+delivery_channels,"ส่งตรงผ่าน LINE OA (ส่งเอง รัศมี 5 กม.), Grab Food, LINE MAN"
+delivery_fee,ฟรีเมื่อสั่งครบ 300 บาทขึ้นไป / ต่ำกว่านั้นคิด 30 บาท
+delivery_time_estimate,30–45 นาที (ในรัศมีให้บริการ)
+cancellation_policy,"ยกเลิกได้ก่อนครัวเริ่มทำ (สถานะ ""รับออเดอร์แล้ว"") เท่านั้น ต้องผ่านการอนุมัติจากทีมงาน (Human Approval)"
+refund_policy,กรณีสินค้าผิด/ไม่ได้รับสินค้า/คุณภาพไม่ตรง พิจารณาเป็นรายกรณี ต้องผ่านการอนุมัติจากทีมงาน (Human Approval) เท่านั้น
+wifi,SSID: ImJai_Guest / Password: imjai2026
+parking,มีที่จอดรถหน้าร้าน 6 คัน
+current_promotion,ซื้อกาแฟหรือชา 1 แก้ว + เบเกอรี 1 ชิ้น (DS-01/DS-02) ลดทันที 15 บาท ตั้งแต่วันนี้ – 31 ส.ค. 2569
+service_scope,FAQ / สอบถามสินค้า / เช็คสถานะออเดอร์ / รับเรื่องร้องเรียน
+human_approval_actions,"refund, cancel_order, special_discount, high_risk_complaint"

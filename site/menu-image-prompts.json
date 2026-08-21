@@ -1,0 +1,23 @@
+{
+  "status": "placeholder-prompts-ready-for-final-menu-art",
+  "basePrompt": "Cute polished 2D vector cartoon illustration of {{menuName}}, appetizing Thai cafe presentation, warm cream and coffee-brown color palette, soft shadows, clean bold silhouette, centered composition, transparent background, no text, no watermark, consistent lighting and perspective, commercial restaurant menu style, 1024x1024",
+  "export": { "source": "PNG 1024x1024 transparent", "web": "WebP 1024x1024", "naming": "kebab-case" },
+  "items": [
+    { "sku":"FD-01", "file":"thai-basil-pork-fried-egg", "alt":"ข้าวผัดกะเพราหมูสับไข่ดาว", "menuName":"Thai basil minced pork over rice with fried egg" },
+    { "sku":"FD-02", "file":"thai-pork-omelette-rice", "alt":"ข้าวไข่เจียวหมูสับ", "menuName":"fluffy Thai minced pork omelette over jasmine rice" },
+    { "sku":"FD-03", "file":"spaghetti-carbonara", "alt":"สปาเก็ตตี้คาโบนาร่า", "menuName":"creamy spaghetti carbonara with bacon and parmesan" },
+    { "sku":"FD-04", "file":"ham-cheese-sandwich", "alt":"แซนวิชแฮมชีส", "menuName":"toasted whole wheat ham and cheese sandwich" },
+    { "sku":"FD-05", "file":"tom-yum-goong", "alt":"ต้มยำกุ้ง", "menuName":"creamy Thai tom yum goong soup with four prawns" },
+    { "sku":"DS-01", "file":"chocolate-ganache-cake", "alt":"เค้กช็อกโกแลต", "menuName":"rich chocolate cake with glossy ganache" },
+    { "sku":"DS-02", "file":"butter-croissant", "alt":"ครัวซองต์เนยสด", "menuName":"flaky golden French butter croissant" },
+    { "sku":"DS-03", "file":"red-velvet-cheesecake", "alt":"ชีสเค้กเรดเวลเวท", "menuName":"red velvet cheesecake slice" },
+    { "sku":"DR-C01", "file":"americano-coffee", "alt":"อเมริกาโน่ร้อนและเย็น", "menuName":"hot and iced americano coffee" },
+    { "sku":"DR-C02", "file":"cafe-latte", "alt":"ลาเต้ร้อนและเย็น", "menuName":"hot and iced cafe latte with latte art" },
+    { "sku":"DR-C03", "file":"cappuccino", "alt":"คาปูชิโน่", "menuName":"cappuccino with soft milk foam" },
+    { "sku":"DR-C04", "file":"iced-mocha", "alt":"มอคค่าเย็น", "menuName":"iced mocha coffee with chocolate" },
+    { "sku":"DR-N01", "file":"thai-iced-tea", "alt":"ชาไทยเย็น", "menuName":"Thai iced tea with condensed milk" },
+    { "sku":"DR-N02", "file":"matcha-latte", "alt":"มัทฉะลาเต้", "menuName":"premium matcha latte" },
+    { "sku":"DR-N03", "file":"honey-lemon-soda", "alt":"น้ำผึ้งมะนาวโซดา", "menuName":"sparkling honey lemon soda" },
+    { "sku":"DR-N04", "file":"strawberry-smoothie", "alt":"สมูทตี้สตรอว์เบอร์รี", "menuName":"strawberry yogurt smoothie" }
+  ]
+}
