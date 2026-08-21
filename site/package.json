@@ -13,7 +13,8 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build:standalone": "vite build --config standalone/vite.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -51,6 +52,7 @@
     "typescript": "5.9.3",
     "vinext": "1.0.0-beta.3",
     "vite": "8.0.13",
+    "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^4.1.11",
     "wrangler": "4.92.0"
   },

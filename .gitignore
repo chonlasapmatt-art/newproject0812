@@ -39,3 +39,4 @@ yarn-error.log*
 # machine last ran `dev` or `build`. Rewritten constantly, useful to nobody else.
 .vinext/
 .wrangler/
+dist-standalone/
