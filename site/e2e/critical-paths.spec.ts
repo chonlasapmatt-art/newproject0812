@@ -25,7 +25,9 @@ test('a guest who taps add is sent to sign in and keeps the dish', async ({ page
   await page.getByRole('button', { name: /เพิ่มลงตะกร้า/ }).click();
 
   // Taken to sign in, told where to go back to, and the dish is held for them.
-  await expect(page).toHaveURL(/\/account\?next=/);
+  // The trailing slash is optional: the static export adds one, the server
+  // build does not, and either is the same destination.
+  await expect(page).toHaveURL(/\/account\/?\?next=/);
   const held = await page.evaluate(() => sessionStorage.getItem('imjai-pending-add'));
   expect(held).toBeTruthy();
   expect(JSON.parse(held!).line.sku).toBeTruthy();
