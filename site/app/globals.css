@@ -571,3 +571,32 @@ button { color: inherit; }
    inline opacity:0 would hide the content for good. Only inline styles can be
    beaten here, hence !important, and only while the bundle has not booted. */
 .no-js [data-reveal] { opacity: 1 !important; transform: none !important; }
+
+/* Payment state on the tracking page. Colour alone never carries the meaning —
+   each state also has its own wording and, where known, the exact amount. */
+.payment-state {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+}
+.payment-state b { display: block; font-size: 14px; }
+.payment-state small { display: block; margin-top: 2px; color: #7d6a5e; font-size: 12px; line-height: 1.5; }
+.payment-state strong { font-family: Georgia, serif; font-size: 19px; white-space: nowrap; }
+.payment-dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+
+.payment-state.ok { color: var(--sage); border-color: color-mix(in srgb, var(--sage) 42%, transparent); background: #f2f5ef; }
+.payment-state.wait { color: #a8642f; border-color: color-mix(in srgb, #a8642f 38%, transparent); background: #fdf5ee; }
+.payment-state.stop { color: #a63a2c; border-color: color-mix(in srgb, #a63a2c 40%, transparent); background: #fdf1ef; }
+.payment-state.plain { color: var(--ink-soft, #6d5e52); }
+.payment-state b, .payment-state strong { color: var(--ink); }
+
+@media (max-width: 520px) {
+  .payment-state { grid-template-columns: auto 1fr; }
+  .payment-state strong { grid-column: 2; }
+}

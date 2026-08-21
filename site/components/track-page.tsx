@@ -13,7 +13,21 @@ const steps = [
   { id: 'completed', label: 'สำเร็จ', note: 'ขอบคุณที่อุดหนุนอิ่มใจ', icon: Check },
 ];
 
-type StoredOrder = { orderNumber: string; phone: string; status: string; createdAt: string; paymentStatus: string; totals: { total: number }; fulfilment: string; lines: { name: string; quantity: number }[] };
+type StoredOrder = { orderNumber: string; phone: string; status: string; createdAt: string; paymentStatus: string; paymentNote?: string | null; payableAmount?: number; totals: { total: number }; fulfilment: string; lines: { name: string; quantity: number }[] };
+
+/**
+ * How each payment state reads to the customer.
+ *
+ * `paid` only ever comes from the bank answering through verify-slip, so the
+ * confirmed wording is safe to state plainly; everything else says what is
+ * still outstanding rather than implying the money arrived.
+ */
+const PAYMENT_STATES: Record<string, { label: string; tone: 'ok' | 'wait' | 'stop' | 'plain'; detail: string }> = {
+  paid: { label: 'ชำระเงินแล้ว', tone: 'ok', detail: 'ตรวจยอดกับธนาคารเรียบร้อย' },
+  pending_verification: { label: 'รอตรวจสอบสลิป', tone: 'wait', detail: 'ร้านจะยืนยันให้เร็วที่สุด' },
+  rejected: { label: 'สลิปไม่ผ่านการตรวจ', tone: 'stop', detail: 'กรุณาติดต่อร้านที่ 02-123-4567' },
+  unpaid: { label: 'ชำระตอนรับอาหาร', tone: 'plain', detail: 'เตรียมเงินสดให้พอดีจะรวดเร็วขึ้น' },
+};
 
 export function TrackPage() {
   const params = useSearchParams();
@@ -43,7 +57,7 @@ export function TrackPage() {
 
   return <main className="track-page"><section className="page-hero compact"><p className="eyebrow">ORDER TRACKING</p><h1>{created ? 'รับออเดอร์แล้วค่ะ' : 'ออเดอร์ถึงไหนแล้วนะ?'}</h1><p>{created ? 'บันทึกเลขออเดอร์ไว้ แล้วติดตามความอร่อยได้จากหน้านี้' : 'กรอกเลขออเดอร์และเบอร์โทรที่ใช้สั่ง เพื่อดูสถานะล่าสุด'}</p></section>
     <section className="tracking-shell"><div className="track-search"><label>เลขออเดอร์<input value={orderNumber} onChange={(event) => setOrderNumber(event.target.value)} placeholder="เช่น IJ260821-AB12" /></label><label>เบอร์โทร<input value={phone} onChange={(event) => setPhone(event.target.value)} inputMode="tel" placeholder="เบอร์ที่ใช้สั่ง (ใช้เมื่อตรวจออเดอร์เดิม)" /></label><button onClick={search}><Search /> ตรวจสอบสถานะ</button></div>
-      {order ? <div className="order-tracking-card"><div className="order-overview"><div><p>ORDER NUMBER</p><h2>{order.orderNumber}</h2><span>สั่งเมื่อ {new Date(order.createdAt).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}</span></div><div className="eta"><Clock3 /><div><small>เวลาโดยประมาณ</small><b>20–30 นาที</b></div></div></div><div className="order-meta"><span><small>ยอดรวม</small><b>฿{order.totals.total}</b></span><span><small>วิธีรับอาหาร</small><b>{order.fulfilment === 'delivery' ? 'จัดส่ง' : 'รับที่ร้าน'}</b></span><span><small>การชำระเงิน</small><b>{order.paymentStatus === 'pending_verification' ? 'รอตรวจสอบ' : 'ชำระตอนรับอาหาร'}</b></span></div><ol className="timeline">{steps.map((step, index) => { const Icon = step.icon; const done = index <= currentIndex; return <li className={done ? 'done' : ''} key={step.id}><span><Icon /></span><div><b>{step.label}</b><small>{step.note}</small></div>{index === currentIndex && <em>สถานะปัจจุบัน</em>}</li>; })}</ol><div className="order-items"><b>รายการของคุณ</b>{order.lines.map((line, index) => <span key={`${line.name}-${index}`}>{line.quantity} × {line.name}</span>)}</div></div> : searched ? <div className="track-empty"><span>🧾</span><h2>ยังไม่พบออเดอร์นี้</h2><p>ตรวจเลขออเดอร์และเบอร์โทรอีกครั้ง หรือติดต่อร้าน 02-123-4567</p></div> : <div className="track-prompt"><span>🍳</span><h2>พร้อมติดตามทุกขั้นตอน</h2><p>สถานะจะอัปเดตตั้งแต่ร้านรับออเดอร์ กำลังปรุง จนถึงพร้อมรับหรือจัดส่ง</p></div>}
+      {order ? <div className="order-tracking-card"><div className="order-overview"><div><p>ORDER NUMBER</p><h2>{order.orderNumber}</h2><span>สั่งเมื่อ {new Date(order.createdAt).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}</span></div><div className="eta"><Clock3 /><div><small>เวลาโดยประมาณ</small><b>20–30 นาที</b></div></div></div><div className="order-meta"><span><small>ยอดรวม</small><b>฿{order.totals.total}</b></span><span><small>วิธีรับอาหาร</small><b>{order.fulfilment === 'delivery' ? 'จัดส่ง' : 'รับที่ร้าน'}</b></span><span><small>การชำระเงิน</small><b>{(PAYMENT_STATES[order.paymentStatus] ?? PAYMENT_STATES.unpaid).label}</b></span></div>{(() => { const state = PAYMENT_STATES[order.paymentStatus] ?? PAYMENT_STATES.unpaid; return <div className={`payment-state ${state.tone}`}><span className="payment-dot" aria-hidden /><div><b>{state.label}</b><small>{order.paymentNote ?? state.detail}</small></div>{order.paymentStatus !== 'unpaid' && order.payableAmount ? <strong>฿{order.payableAmount.toFixed(2)}</strong> : null}</div>; })()}<ol className="timeline">{steps.map((step, index) => { const Icon = step.icon; const done = index <= currentIndex; return <li className={done ? 'done' : ''} key={step.id}><span><Icon /></span><div><b>{step.label}</b><small>{step.note}</small></div>{index === currentIndex && <em>สถานะปัจจุบัน</em>}</li>; })}</ol><div className="order-items"><b>รายการของคุณ</b>{order.lines.map((line, index) => <span key={`${line.name}-${index}`}>{line.quantity} × {line.name}</span>)}</div></div> : searched ? <div className="track-empty"><span>🧾</span><h2>ยังไม่พบออเดอร์นี้</h2><p>ตรวจเลขออเดอร์และเบอร์โทรอีกครั้ง หรือติดต่อร้าน 02-123-4567</p></div> : <div className="track-prompt"><span>🍳</span><h2>พร้อมติดตามทุกขั้นตอน</h2><p>สถานะจะอัปเดตตั้งแต่ร้านรับออเดอร์ กำลังปรุง จนถึงพร้อมรับหรือจัดส่ง</p></div>}
     </section>
   </main>;
 }

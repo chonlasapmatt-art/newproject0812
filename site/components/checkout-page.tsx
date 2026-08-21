@@ -88,12 +88,28 @@ export function CheckoutPage() {
     const { idempotencyKey, orderNumber } = orderRef;
     // payableAmount carries the satang suffix the QR was built with; slip
     // verification matches the incoming transfer against exactly this figure.
-    const draft = { orderNumber, idempotencyKey, ...values, lines, totals, payableAmount: charge?.payable ?? totals.total, slipReference: slipScan?.state === 'read' ? slipScan.reference : null, status: 'pending', createdAt: new Date().toISOString(), paymentStatus: values.payment === 'promptpay' ? 'pending_verification' : 'unpaid' };
+    const draft = { orderNumber, idempotencyKey, ...values, lines, totals, payableAmount: charge?.payable ?? totals.total, slipReference: slipScan?.state === 'read' ? slipScan.reference : null, paymentNote: null as string | null, status: 'pending', createdAt: new Date().toISOString(), paymentStatus: values.payment === 'promptpay' ? 'pending_verification' : 'unpaid' };
     try {
       if (isSupabaseConfigured && supabase) {
         const { data, error } = await supabase.functions.invoke('create-order', { body: { idempotencyKey, customer: { name: values.name, phone: values.phone }, fulfilment: values.fulfilment, address: values.address, note: values.note, paymentMethod: values.payment, coupon: values.coupon, items: lines.map((line) => ({ sku: line.sku, quantity: line.quantity, options: line.options, addOns: line.addOns?.map((item) => item.name), note: line.note })) } });
         if (error) throw error;
         draft.orderNumber = data.orderNumber;
+
+        // Ask the bank about the slip. A failure here must not lose the order:
+        // it is already placed, and an unverified payment simply waits for staff.
+        if (slipScan?.state === 'read') {
+          try {
+            const verified = await supabase.functions.invoke('verify-slip', {
+              body: { orderNumber: draft.orderNumber, slipReference: slipScan.reference },
+            });
+            const verdict = verified.data as { status?: string; reason?: string } | null;
+            if (verdict?.status === 'confirmed') draft.paymentStatus = 'paid';
+            else if (verdict?.status === 'rejected') draft.paymentStatus = 'rejected';
+            draft.paymentNote = verdict?.reason ?? null;
+          } catch {
+            draft.paymentNote = 'ยังตรวจสลิปกับธนาคารไม่ได้ พนักงานจะตรวจสอบให้';
+          }
+        }
       }
       const orders = JSON.parse(localStorage.getItem('imjai-orders') ?? '[]');
       localStorage.setItem('imjai-orders', JSON.stringify([draft, ...orders].slice(0, 20)));
