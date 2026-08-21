@@ -12,6 +12,7 @@ import { STORE } from '../lib/catalog';
 import { decodeSlipImage } from '../lib/decode-slip-image';
 import { getOrderRef, getServerOrderRef, renewOrderRef, subscribeOrderRef } from '../lib/order-ref';
 import { buildPromptPayPayload, describeAmount } from '../lib/promptpay';
+import { useCan } from '../lib/session';
 import { slipReference } from '../lib/slip-verify';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { PromptPayCard } from './promptpay-card';
@@ -33,6 +34,9 @@ type CheckoutValues = z.infer<typeof schema>;
 
 export function CheckoutPage() {
   const router = useRouter();
+  // Browsing and filling a basket stay open to everyone; an account is asked
+  // for once, here, where it starts paying for itself in order history.
+  const { canOrder } = useCan();
   const { lines, coupon, setCoupon, clear } = useCartStore();
   const [submitting, setSubmitting] = useState(false);
   const [slip, setSlip] = useState<File | null>(null);
@@ -82,6 +86,7 @@ export function CheckoutPage() {
 
   const onSubmit = async (values: CheckoutValues) => {
     if (!lines.length || totals.subtotal < STORE.minimumOrder) return;
+    if (!canOrder) return;
     if (values.payment === 'promptpay' && !slip) return;
     if (!orderRef) return;
     setSubmitting(true);
@@ -130,7 +135,7 @@ export function CheckoutPage() {
         <section className="form-card"><div className="form-card-title"><span>3</span><div><h2>วิธีชำระเงิน</h2><p>ร้านจะยืนยันการชำระเงินหลังตรวจสอบแล้ว</p></div></div><div className="payment-options"><label className={payment === 'cash' ? 'selected' : ''}><input type="radio" value="cash" {...register('payment')} /><span>💵</span><div><b>เงินสดตอนรับอาหาร</b><small>ชำระเมื่อรับที่ร้านหรือปลายทาง</small></div></label><label className={payment === 'promptpay' ? 'selected' : ''}><input type="radio" value="promptpay" {...register('payment')} /><QrCode /><div><b>พร้อมเพย์ QR</b><small>อัปโหลดสลิปเพื่อรอตรวจสอบ</small></div></label></div>{payment === 'promptpay' && <div className="promptpay-panel">{charge ? <PromptPayCard payload={charge.payload} amountDisplay={charge.display} accountName={promptPayName} orderNumber={orderRef?.orderNumber} /> : <div className="qr-placeholder"><QrCode /><span>QR ร้านค้า</span><small>{promptPayId ? 'กำลังเตรียม…' : 'ยังไม่ได้ตั้งค่า PROMPTPAY_ID'}</small></div>}<div><b>สแกน QR แล้วอัปโหลดสลิปเพื่อยืนยันอัตโนมัติ</b><p>ยอดชำระ {charge ? `฿${charge.display}` : `฿${totals.total}`}</p><label className="slip-upload">อัปโหลดสลิป (JPG, PNG หรือ WebP ไม่เกิน 5MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void onSlipChange(event.target.files?.[0] ?? null); }} /></label>{slip && <small className="valid-file"><CheckCircle2 /> {slip.name}</small>}{slipScan?.state === 'scanning' && <small className="slip-status">กำลังอ่าน QR บนสลิป…</small>}{slipScan?.state === 'read' && <small className="slip-status ok">อ่าน QR บนสลิปได้แล้ว ระบบจะตรวจยอดกับธนาคารอัตโนมัติ</small>}{slipScan?.state === 'unreadable' && <small className="slip-status warn">อ่าน QR บนสลิปไม่ได้ พนักงานจะตรวจสอบให้ภายหลัง</small>}</div></div>}</section>
         <section className="form-card"><div className="form-card-title"><span>4</span><div><h2>หมายเหตุ</h2><p>รายละเอียดเพิ่มเติมสำหรับร้านหรือคนส่ง</p></div></div><label className="full-field"><textarea {...register('note')} rows={3} placeholder="เช่น โทรก่อนถึง ฝากไว้ที่ล็อบบี้" /></label></section>
       </div>
-      <aside className="order-summary"><h2>สรุปออเดอร์</h2><div className="summary-lines">{lines.map((line) => <div key={line.id}><span className="summary-emoji">{line.emoji}</span><div><b>{line.name}</b><small>{line.quantity} × ฿{line.unitPrice}{line.options?.length ? ` · ${line.options.join(', ')}` : ''}</small></div><strong>฿{lineTotal(line)}</strong></div>)}</div><label className="summary-coupon">คูปอง<input {...register('coupon')} placeholder="IMJAI15" /></label><dl><div><dt>ยอดสินค้า</dt><dd>฿{totals.subtotal}</dd></div><div><dt>ส่วนลด</dt><dd>-฿{totals.discount}</dd></div><div><dt>ค่าจัดส่ง</dt><dd>{totals.deliveryFee ? `฿${totals.deliveryFee}` : 'ฟรี'}</dd></div><div className="summary-total"><dt>ยอดรวมสุทธิ</dt><dd>฿{totals.total}</dd></div></dl>{totals.subtotal < STORE.minimumOrder && <p className="order-warning">ยอดสั่งซื้อขั้นต่ำ ฿{STORE.minimumOrder} กรุณาเพิ่มอีก ฿{STORE.minimumOrder - totals.subtotal}</p>}{payment === 'promptpay' && !slip && <p className="order-warning">กรุณาอัปโหลดสลิปก่อนส่งออเดอร์</p>}<button className="place-order" disabled={submitting || totals.subtotal < STORE.minimumOrder || (payment === 'promptpay' && !slip)}>{submitting ? 'กำลังส่งออเดอร์…' : `ยืนยันออเดอร์ · ฿${totals.total}`}</button><p className="secure-note"><ShieldCheck /> ราคาและสิทธิ์ส่วนลดจะตรวจซ้ำที่ระบบร้าน การชำระเงินจะแสดง “รอตรวจสอบ” จนกว่าพนักงานยืนยัน</p></aside>
+      <aside className="order-summary"><h2>สรุปออเดอร์</h2><div className="summary-lines">{lines.map((line) => <div key={line.id}><span className="summary-emoji">{line.emoji}</span><div><b>{line.name}</b><small>{line.quantity} × ฿{line.unitPrice}{line.options?.length ? ` · ${line.options.join(', ')}` : ''}</small></div><strong>฿{lineTotal(line)}</strong></div>)}</div><label className="summary-coupon">คูปอง<input {...register('coupon')} placeholder="IMJAI15" /></label><dl><div><dt>ยอดสินค้า</dt><dd>฿{totals.subtotal}</dd></div><div><dt>ส่วนลด</dt><dd>-฿{totals.discount}</dd></div><div><dt>ค่าจัดส่ง</dt><dd>{totals.deliveryFee ? `฿${totals.deliveryFee}` : 'ฟรี'}</dd></div><div className="summary-total"><dt>ยอดรวมสุทธิ</dt><dd>฿{totals.total}</dd></div></dl>{totals.subtotal < STORE.minimumOrder && <p className="order-warning">ยอดสั่งซื้อขั้นต่ำ ฿{STORE.minimumOrder} กรุณาเพิ่มอีก ฿{STORE.minimumOrder - totals.subtotal}</p>}{payment === 'promptpay' && !slip && <p className="order-warning">กรุณาอัปโหลดสลิปก่อนส่งออเดอร์</p>}{!canOrder && <Link prefetch={false} className="signin-gate" href="/account"><b>เข้าสู่ระบบก่อนสั่งซื้อ</b><small>ใช้เวลาไม่ถึงนาที แล้วคุณจะติดตามออเดอร์และดูประวัติย้อนหลังได้</small></Link>}<button className="place-order" disabled={!canOrder || submitting || totals.subtotal < STORE.minimumOrder || (payment === 'promptpay' && !slip)}>{submitting ? 'กำลังส่งออเดอร์…' : canOrder ? `ยืนยันออเดอร์ · ฿${totals.total}` : 'เข้าสู่ระบบเพื่อสั่งซื้อ'}</button><p className="secure-note"><ShieldCheck /> ราคาและสิทธิ์ส่วนลดจะตรวจซ้ำที่ระบบร้าน การชำระเงินจะแสดง “รอตรวจสอบ” จนกว่าพนักงานยืนยัน</p></aside>
     </form>
   </main>;
 }

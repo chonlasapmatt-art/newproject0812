@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, signIn, test } from './fixtures';
 
 /**
  * Covers the PromptPay path end to end: the QR has to appear with the exact
@@ -58,10 +58,24 @@ test('a PromptPay order cannot be submitted without a slip', async ({ page }) =>
 });
 
 test('paying cash needs no slip and stays submittable', async ({ page }) => {
+  await signIn(page);
   await addToCart(page);
   await page.goto('/checkout');
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('.ppay-card')).toHaveCount(0);
   await expect(page.locator('.place-order')).toBeEnabled();
+});
+
+test('a visitor without an account is asked to sign in, not turned away', async ({ page }) => {
+  // Browsing and filling a basket stay open; the account is asked for here.
+  await addToCart(page);
+  await page.goto('/checkout');
+  await page.waitForLoadState('networkidle');
+
+  // The basket they built is still in front of them, not discarded.
+  await expect(page.locator('.summary-lines')).toBeVisible();
+  await expect(page.locator('.signin-gate')).toBeVisible();
+  await expect(page.locator('.place-order')).toBeDisabled();
+  await expect(page.locator('.place-order')).toContainText('เข้าสู่ระบบ');
 });

@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { ArrowDownRight, ArrowRight, Clock3, Heart, MapPin, PackageCheck, Quote, ShieldCheck, Sparkles, Star, UtensilsCrossed } from 'lucide-react';
 import { MENU_ITEMS, STORE } from '../lib/catalog';
 import { useCartStore } from '../stores/cart-store';
+import { Tilt } from './tilt';
 
 const favourites = MENU_ITEMS.filter((item) => item.featured).slice(0, 4);
 const categories = [
@@ -46,7 +47,7 @@ export function HomePage() {
         <div className="section-heading"><div><p className="eyebrow">IMJAI FAVOURITES</p><h2>เมนูที่ใครมาก็คิดถึง</h2></div><div><p>คัดวัตถุดิบดี ปรุงสดใหม่<br />ในแบบที่อยากทำให้คนที่เรารักทาน</p><Link prefetch={false} className="section-link" href="/menu">ดูเมนูทั้งหมด <ArrowRight size={15} /></Link></div></div>
         <div className="menu-grid featured-grid">
           {favourites.map((item, index) => (
-            <motion.article data-reveal className="menu-card" key={item.sku} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * .06 }}>
+            <Tilt key={item.sku} strength={7} lift={12}><motion.article data-reveal className="menu-card" initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * .06 }}>
               <Link prefetch={false} href={`/menu?item=${item.sku}`} className={`dish-illustration ${item.tone}`}>
                 {item.category === 'coffee' && <><span className="steam steam-one" /><span className="steam steam-two" /></>}
                 <span role="img" aria-label={item.name}>{item.emoji}</span><small>{String(index + 1).padStart(2, '0')}</small>
@@ -54,7 +55,7 @@ export function HomePage() {
               </Link>
               <div className="menu-card-copy"><div><h3>{item.name}</h3><p>{item.description}</p></div><b>฿{item.price}</b></div>
               <button className="quick-add" onClick={() => add({ sku: item.sku, name: item.name, unitPrice: item.price, quantity: 1, emoji: item.emoji })}>+ เพิ่มลงตะกร้า</button>
-            </motion.article>
+            </motion.article></Tilt>
           ))}
         </div>
       </section>

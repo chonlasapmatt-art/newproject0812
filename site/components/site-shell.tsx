@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
-import { CircleUserRound, Menu, ShoppingBag, X } from 'lucide-react';
+import { CircleUserRound, LayoutDashboard, Menu, ShoppingBag, X } from 'lucide-react';
 import { useState } from 'react';
+import { useCan } from '../lib/session';
 import { useCartStore } from '../stores/cart-store';
 import { BootScreen } from './boot-screen';
 import { ImJaiMark } from './brand-logo';
@@ -14,10 +15,13 @@ import { ImJaiAssistant } from './imjai-assistant';
 import { RouteTransition } from './route-transition';
 import { TactileLayer } from './tactile-layer';
 
+/** Open to everyone, in the order a customer needs them. */
 const links = [
   { href: '/', label: 'หน้าแรก' },
   { href: '/menu', label: 'เมนู' },
   { href: '/track', label: 'ติดตามออเดอร์' },
+  { href: '/about', label: 'เกี่ยวกับเรา' },
+  { href: '/contact', label: 'ติดต่อเรา' },
 ];
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
@@ -25,6 +29,9 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   const openCart = useCartStore((state) => state.open);
   const lines = useCartStore((state) => state.lines);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // The dashboard link is only rendered for staff. The page guards itself as
+  // well — hiding a link is presentation, not access control.
+  const { isAdmin, isSignedIn } = useCan();
 
 
   const count = lines.reduce((sum, line) => sum + line.quantity, 0);
@@ -41,10 +48,10 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           </Link>
           <nav className="desktop-nav" aria-label="เมนูหลัก">
             {links.map((link) => <Link prefetch={false} className={pathname === link.href ? 'active' : ''} href={link.href} key={link.href}>{link.label}</Link>)}
-            <Link prefetch={false} className={pathname === '/account' ? 'active' : ''} href="/account">สมาชิก</Link>
+            {isAdmin && <Link prefetch={false} className={`nav-admin ${pathname === '/admin' ? 'active' : ''}`} href="/admin"><LayoutDashboard size={14} /> แดชบอร์ด</Link>}
           </nav>
           <div className="header-actions">
-            <Link prefetch={false} className="icon-button account-button" href="/account" aria-label="บัญชีสมาชิก"><CircleUserRound size={21} /></Link>
+            <Link prefetch={false} className={`icon-button account-button ${isSignedIn ? 'is-signed-in' : ''}`} href="/account" aria-label={isSignedIn ? 'บัญชีของฉัน' : 'เข้าสู่ระบบ'}><CircleUserRound size={21} /></Link>
             <button className="cart-button" onClick={openCart} aria-label={`เปิดตะกร้า มี ${count} รายการ`}>
               <ShoppingBag size={19} /><span className="cart-label">ตะกร้า</span>{count > 0 && <b>{count}</b>}
             </button>
@@ -59,7 +66,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             <motion.button className="drawer-backdrop" aria-label="ปิดเมนู" onClick={() => setMobileOpen(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
             <motion.aside className="mobile-nav" initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 320 }}>
               <div className="drawer-title"><span>เมนู</span><button className="icon-button" onClick={() => setMobileOpen(false)} aria-label="ปิดเมนู"><X /></button></div>
-              <nav>{[...links, { href: '/account', label: 'สมาชิก' }].map((link) => <Link prefetch={false} href={link.href} onClick={() => setMobileOpen(false)} key={link.href}>{link.label}<span>↗</span></Link>)}</nav>
+              <nav>{[...links, ...(isAdmin ? [{ href: '/admin', label: 'แดชบอร์ด' }] : []), { href: '/account', label: isSignedIn ? 'บัญชีของฉัน' : 'เข้าสู่ระบบ' }].map((link) => <Link prefetch={false} href={link.href} onClick={() => setMobileOpen(false)} key={link.href}>{link.label}<span>↗</span></Link>)}</nav>
               <div className="mobile-nav-note"><b>เปิดทุกวัน</b><span>07:00–20:00 น.</span><span>LINE @imjaicafe</span></div>
             </motion.aside>
           </>

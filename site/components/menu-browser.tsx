@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { CATEGORIES, MENU_ITEMS, type MenuCategory, type MenuItem } from '../lib/catalog';
 import { useCartStore } from '../stores/cart-store';
+import { Tilt } from './tilt';
 
 type SortValue = 'recommended' | 'price-low' | 'price-high' | 'popular';
 
@@ -39,10 +40,10 @@ export function MenuBrowser() {
       <div className="category-tabs" role="tablist" aria-label="หมวดหมู่เมนู">{CATEGORIES.map((item) => <button role="tab" aria-selected={category === item.id} className={category === item.id ? 'active' : ''} onClick={() => setCategory(item.id)} key={item.id}>{item.label}</button>)}</div>
       <section className="catalog-section">
         <div className="catalog-heading"><p>พบ <b>{items.length}</b> เมนู</p><span>ข้อมูลสินค้าและสต็อกล่าสุด</span></div>
-        {items.length ? <div className="catalog-grid">{items.map((item, index) => <motion.article className={`catalog-card ${!item.available ? 'sold-out' : ''}`} key={item.sku} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 8) * .035 }}>
+        {items.length ? <div className="catalog-grid">{items.map((item, index) => <Tilt key={item.sku} strength={7} lift={12}><motion.article className={`catalog-card ${!item.available ? 'sold-out' : ''}`} key={item.sku} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 8) * .035 }}>
           <button className={`catalog-art ${item.tone}`} onClick={() => setSelected(item)} disabled={!item.available} aria-label={`ดูรายละเอียด ${item.name}`}><span>{item.emoji}</span>{item.chefChoice && <em><Star size={12} fill="currentColor" /> Chef&apos;s Choice</em>}{!item.available && <b>หมดวันนี้</b>}<small>เหลือ {item.stock}</small></button>
           <div className="catalog-copy"><p>{CATEGORIES.find((categoryItem) => categoryItem.id === item.category)?.label}</p><div className="catalog-title"><h2>{item.name}</h2><b>฿{item.price}</b></div><span>{item.description}</span>{item.allergens.length > 0 && <small>สารก่อภูมิแพ้: {item.allergens.join(', ')}</small>}<button disabled={!item.available} onClick={() => setSelected(item)}>{item.available ? 'เลือกตัวเลือก' : 'สินค้าหมด'} <Plus size={16} /></button></div>
-        </motion.article>)}</div> : <div className="no-results"><span>🔎</span><h2>ยังไม่พบเมนูที่ค้นหา</h2><p>ลองเปลี่ยนคำค้นหรือเลือกหมวดหมู่อื่นนะคะ</p></div>}
+        </motion.article></Tilt>)}</div> : <div className="no-results"><span>🔎</span><h2>ยังไม่พบเมนูที่ค้นหา</h2><p>ลองเปลี่ยนคำค้นหรือเลือกหมวดหมู่อื่นนะคะ</p></div>}
       </section>
       <ProductModal key={selected?.sku ?? 'none'} item={selected} onClose={() => setSelected(null)} />
     </main>

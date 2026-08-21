@@ -6,6 +6,7 @@ import { Eye, EyeOff, LogOut, MapPin, Package, RotateCcw, ShieldCheck, UserRound
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { previewSignIn } from '../lib/session';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { useCartStore } from '../stores/cart-store';
 
@@ -31,7 +32,18 @@ export function AccountPage() {
 
   const submit = async (values: AuthValues) => {
     setMessage('');
-    if (!isSupabaseConfigured || !supabase) { setMessage('ระบบสมาชิกพร้อมใช้งานหลังเจ้าของร้านเชื่อมต่อ Supabase ตามคู่มือในโปรเจกต์'); return; }
+    // Without a Supabase project there is nothing to authenticate against, so
+    // sign in locally instead of refusing. The session it creates is marked
+    // unverified and no server will accept it — it exists so the shop can walk
+    // the whole flow, admin views included, while the backend is being set up.
+    if (!isSupabaseConfigured || !supabase) {
+      if (mode === 'forgot') { setMessage('รีเซ็ตรหัสผ่านได้หลังเชื่อมต่อ Supabase แล้ว'); return; }
+      const session = previewSignIn(values.email, values.name);
+      setMessage(session.role === 'admin'
+        ? 'เข้าสู่ระบบโหมดพรีวิวแล้ว — คุณเห็นแดชบอร์ดได้'
+        : 'เข้าสู่ระบบโหมดพรีวิวแล้ว — ข้อมูลจะยังไม่ถูกบันทึกจนกว่าจะเชื่อม Supabase');
+      return;
+    }
     setBusy(true);
     try {
       if (mode === 'forgot') {

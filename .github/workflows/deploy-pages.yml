@@ -34,6 +34,10 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       NEXT_PUBLIC_ADMIN_PREVIEW_MODE: "false"
+      # Deliberately has no fallback: an email address should not sit in a
+      # public repository. Set the repository variable to switch the
+      # dashboard on; until then the deployed site has no admin.
+      NEXT_PUBLIC_ADMIN_EMAILS: ${{ vars.NEXT_PUBLIC_ADMIN_EMAILS }}
       # The PromptPay destination is public by necessity: it is encoded in every
       # QR the checkout renders, and it is the same number printed on the shop's
       # counter standee. It receives money and cannot be used to withdraw any.

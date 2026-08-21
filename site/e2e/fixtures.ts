@@ -35,4 +35,24 @@ export const test = base.extend({
   },
 });
 
+/**
+ * Put a signed-in session in place before the page loads.
+ *
+ * Writes the same record lib/session reads, so the app comes up already signed
+ * in without a test having to drive the account form for every case that
+ * merely needs an account to exist.
+ */
+export async function signIn(page: import('@playwright/test').Page, email = 'customer@example.com') {
+  await page.addInitScript((address) => {
+    try {
+      localStorage.setItem(
+        'imjai-session',
+        JSON.stringify({ email: address, name: address.split('@')[0], verified: false }),
+      );
+    } catch {
+      // Storage unavailable: the test will see the signed-out view and say so.
+    }
+  }, email);
+}
+
 export { expect } from '@playwright/test';
