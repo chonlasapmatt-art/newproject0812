@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { CircleUserRound, Menu, ShoppingBag, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useCartStore } from '../stores/cart-store';
+import { ImJaiMark } from './brand-logo';
 import { CartDrawer } from './cart-drawer';
 import { ImJaiAssistant } from './imjai-assistant';
 
@@ -54,7 +55,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
       <header className="site-header">
         <div className="site-header-inner">
           <Link prefetch={false} className="brand" href="/" aria-label="ImJai หน้าแรก">
-            <span className="brand-mark">อ</span>
+            <ImJaiMark size={38} title={null} />
             <span><b>IMJAI</b><small>CAFE &amp; KITCHEN</small></span>
           </Link>
           <nav className="desktop-nav" aria-label="เมนูหลัก">
@@ -88,7 +89,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
       <CartDrawer />
       <ImJaiAssistant />
       <footer className="site-footer">
-        <div className="footer-brand"><span className="brand-mark">อ</span><div><b>ImJai Cafe &amp; Kitchen</b><small>รสชาติของความอิ่มใจ ในทุกคำที่ทาน</small></div></div>
+        <div className="footer-brand"><ImJaiMark size={44} title={null} /><div><b>ImJai Cafe &amp; Kitchen</b><small>รสชาติของความอิ่มใจ ในทุกคำที่ทาน</small></div></div>
         <div><b>แวะมาหาเรา</b><span>88/12 ถนนสุขุมวิท เขตวัฒนา กรุงเทพฯ</span><span>ทุกวัน 07:00–20:00 น.</span></div>
         <div><b>ติดต่อ</b><a href="tel:021234567">02-123-4567</a><a href="https://line.me/R/ti/p/%40imjaicafe" rel="noreferrer" target="_blank">LINE @imjaicafe</a></div>
         <p>© 2026 ImJai Cafe &amp; Kitchen</p>

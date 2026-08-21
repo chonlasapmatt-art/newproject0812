@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     title: 'ImJai Cafe & Kitchen — มื้อธรรมดา ที่ทำให้ใจอิ่ม',
     description: 'อาหาร กาแฟ และขนมอบสดใหม่ พร้อมรับที่ร้านหรือจัดส่ง',
     url: 'https://imjai-cafe-kitchen-bangkok.edtech4.chatgpt.site',
-    images: [{ url: '/og.png', width: 1672, height: 941, alt: 'ImJai Cafe & Kitchen — มื้อธรรมดา ที่ทำให้ใจอิ่ม' }],
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'ImJai Cafe & Kitchen — มื้อธรรมดา ที่ทำให้ใจอิ่ม' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -50,7 +50,17 @@ const restaurantJsonLd = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="th">
+    <html lang="th" className="no-js">
+      <head>
+        {/* Reveal-on-scroll ships with inline opacity:0 from the server. If the
+            bundle never runs, this class stays and CSS restores visibility;
+            when it does run, the class is gone before first paint. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "document.documentElement.classList.remove('no-js')",
+          }}
+        />
+      </head>
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(restaurantJsonLd) }} />
         <SiteShell>{children}</SiteShell>

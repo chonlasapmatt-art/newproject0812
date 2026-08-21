@@ -34,3 +34,8 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Local dev-server state: pid, timestamps and absolute paths from whichever
+# machine last ran `dev` or `build`. Rewritten constantly, useful to nobody else.
+.vinext/
+.wrangler/

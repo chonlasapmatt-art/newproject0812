@@ -448,3 +448,126 @@ button { color: inherit; }
   .tracking-shell { padding: 0 15px 90px; }.order-tracking-card { padding: 18px; }.order-meta { grid-template-columns: 1fr 1fr; }.timeline li { grid-template-columns: 42px 1fr; }.timeline li em { display: none; }
   .auth-card { padding: 28px 20px; }.member-head { align-items: flex-start; flex-wrap: wrap; }.member-head > button { margin-left: 0; }.admin-sidebar nav { grid-template-columns: 1fr 1fr; }.admin-content { padding: 18px; }.admin-content > header { flex-direction: column; gap: 15px; }.admin-content header button { width: fit-content; }.metric-grid { grid-template-columns: 1fr; }.orders-panel { overflow-x: auto; }.admin-table { min-width: 520px; }
 }
+
+/* ── PromptPay payment card ──────────────────────────────────────────────
+   Mirrors the printed counter standee: scheme header, code, account footer. */
+.ppay-card {
+  margin: 0;
+  width: 100%;
+  max-width: 340px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 40px -24px rgba(51, 38, 31, .45);
+}
+.ppay-scheme {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 16px;
+  background: #123a6b;
+  color: #fff;
+}
+.ppay-scheme-mark { display: grid; place-items: center; }
+.ppay-scheme b { font-size: 15px; font-weight: 800; letter-spacing: .06em; line-height: 1.1; }
+.ppay-scheme b span { display: block; font-size: 11px; letter-spacing: .18em; opacity: .92; }
+
+.ppay-body { display: grid; justify-items: center; gap: 16px; padding: 20px 20px 18px; background: #fff; }
+.ppay-brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 5px 12px;
+  border: 1.5px solid #123a6b;
+  border-radius: 6px;
+  color: #123a6b;
+  font-family: Georgia, serif;
+  font-size: 15px;
+  font-weight: 700;
+}
+.ppay-brand i { font-style: normal; font-size: 10px; opacity: .85; }
+
+.ppay-qr { width: 190px; height: 190px; display: grid; place-items: center; }
+.ppay-qr svg { width: 100%; height: 100%; display: block; }
+.ppay-qr-fallback { margin: 0; color: #7d6a5e; font-size: 13px; text-align: center; }
+
+.ppay-amount { display: grid; justify-items: center; gap: 3px; text-align: center; }
+.ppay-amount small { color: #7d6a5e; font-size: 11px; letter-spacing: .14em; font-weight: 700; }
+.ppay-amount b { font-family: Georgia, serif; font-size: 30px; line-height: 1; color: var(--coffee); }
+.ppay-amount em { font-style: normal; font-size: 11px; color: #8a7669; line-height: 1.5; max-width: 240px; }
+
+.ppay-account {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin: 0 12px 12px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: var(--sage);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  outline: 1px dashed rgba(255, 255, 255, .55);
+  outline-offset: -5px;
+}
+
+@media (max-width: 640px) {
+  .ppay-card { max-width: 100%; }
+  .ppay-qr { width: 168px; height: 168px; }
+}
+
+/* Reveal-on-scroll must never be the only thing making content visible:
+   without JS, without an IntersectionObserver, or when the visitor asks for
+   reduced motion, the element has to render at rest. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-reveal] { opacity: 1 !important; transform: none !important; }
+}
+
+/* The legacy panel sized its first column for the 130px placeholder tile.
+   The real card needs room, so widen the column and let it wrap on mobile. */
+.promptpay-panel {
+  grid-template-columns: minmax(255px, 320px) 1fr;
+  align-items: start;
+  gap: 22px;
+}
+.promptpay-panel > div:last-child { font-size: 12px; line-height: 1.6; }
+.ppay-account span { text-wrap: balance; }
+
+@media (max-width: 860px) {
+  .promptpay-panel { grid-template-columns: 1fr; justify-items: center; }
+  .promptpay-panel > div:last-child { justify-self: stretch; }
+}
+
+/* Keep the icon in its own column so a wrapped account name never runs under
+   it, and give the amount a font stack that renders ฿ with proper sidebearing. */
+.ppay-account {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+.ppay-account > svg { flex: none; }
+.ppay-amount b {
+  font-family: "Noto Sans Thai", Georgia, "Leelawadee UI", Tahoma, serif;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+
+.slip-status { display: block; margin-top: 6px; font-size: 11px; line-height: 1.5; color: #7d6a5e; }
+.slip-status.ok { color: var(--sage); font-weight: 600; }
+.slip-status.warn { color: #a8642f; font-weight: 600; }
+
+/* Without JavaScript the reveal animation never runs, and the server-rendered
+   inline opacity:0 would hide the content for good. Only inline styles can be
+   beaten here, hence !important, and only while the bundle has not booted. */
+.no-js [data-reveal] { opacity: 1 !important; transform: none !important; }
