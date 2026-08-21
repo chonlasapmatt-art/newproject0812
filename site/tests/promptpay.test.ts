@@ -19,15 +19,15 @@ const REFERENCE_DYNAMIC =
 
 describe('normalizeProxy', () => {
   it('converts a 10-digit mobile number to its 13-digit country-coded form', () => {
-    expect(normalizeProxy('0998756879')).toEqual({ kind: 'mobile', value: '0066998756879' });
+    expect(normalizeProxy('0899999999')).toEqual({ kind: 'mobile', value: '0066899999999' });
   });
 
   it('ignores separators in the input', () => {
-    expect(normalizeProxy('099-875-6879')).toEqual({ kind: 'mobile', value: '0066998756879' });
+    expect(normalizeProxy('089-999-9999')).toEqual({ kind: 'mobile', value: '0066899999999' });
   });
 
   it('accepts a number already carrying the 66 country code', () => {
-    expect(normalizeProxy('66998756879')).toEqual({ kind: 'mobile', value: '0066998756879' });
+    expect(normalizeProxy('66899999999')).toEqual({ kind: 'mobile', value: '0066899999999' });
   });
 
   it('routes 13 digits to the national id tag and 15 to the e-wallet tag', () => {
@@ -56,34 +56,34 @@ describe('buildPromptPayPayload', () => {
   });
 
   it('marks a payload carrying an amount as single-transaction (tag 01 = 12)', () => {
-    expect(buildPromptPayPayload('0998756879', 245.07).startsWith('000201010212')).toBe(true);
+    expect(buildPromptPayPayload('0899999999', 245.07).startsWith('000201010212')).toBe(true);
   });
 
   it('marks an amount-free payload as reusable (tag 01 = 11)', () => {
-    expect(buildPromptPayPayload('0998756879').startsWith('000201010211')).toBe(true);
+    expect(buildPromptPayPayload('0899999999').startsWith('000201010211')).toBe(true);
   });
 
   it('embeds the amount with two decimal places', () => {
-    expect(buildPromptPayPayload('0998756879', 245.07)).toContain('5406245.07');
-    expect(buildPromptPayPayload('0998756879', 80)).toContain('540580.00');
+    expect(buildPromptPayPayload('0899999999', 245.07)).toContain('5406245.07');
+    expect(buildPromptPayPayload('0899999999', 80)).toContain('540580.00');
   });
 
   it('carries the PromptPay AID and the normalised proxy', () => {
-    const payload = buildPromptPayPayload('0998756879', 100);
+    const payload = buildPromptPayPayload('0899999999', 100);
     expect(payload).toContain('0016A000000677010111');
-    expect(payload).toContain('01130066998756879');
+    expect(payload).toContain('01130066899999999');
   });
 
   it('appends a CRC that validates against the rest of the payload', () => {
-    const payload = buildPromptPayPayload('0998756879', 137.42);
+    const payload = buildPromptPayPayload('0899999999', 137.42);
     const body = payload.slice(0, -4);
     expect(payload.slice(-4)).toBe(crc16(body));
   });
 
   it('rejects a non-positive amount', () => {
-    expect(() => buildPromptPayPayload('0998756879', 0)).toThrow(/positive/);
-    expect(() => buildPromptPayPayload('0998756879', -5)).toThrow(/positive/);
-    expect(() => buildPromptPayPayload('0998756879', Number.NaN)).toThrow(/positive/);
+    expect(() => buildPromptPayPayload('0899999999', 0)).toThrow(/positive/);
+    expect(() => buildPromptPayPayload('0899999999', -5)).toThrow(/positive/);
+    expect(() => buildPromptPayPayload('0899999999', Number.NaN)).toThrow(/positive/);
   });
 });
 

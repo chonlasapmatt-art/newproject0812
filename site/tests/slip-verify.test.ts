@@ -50,7 +50,7 @@ describe('preCheckSlip', () => {
 });
 
 describe('confirmAgainstProvider', () => {
-  const provider = { amount: 237.07, receiverProxy: '0066998756879', reference: 'X1' };
+  const provider = { amount: 237.07, receiverProxy: '0066899999999', reference: 'X1' };
 
   it('confirms when the bank figure matches to the satang', () => {
     const outcome = confirmAgainstProvider({ provider, expectedAmount: 237.07 });
@@ -81,7 +81,7 @@ describe('confirmAgainstProvider', () => {
     const outcome = confirmAgainstProvider({
       provider,
       expectedAmount: 237.07,
-      expectedProxy: '0998756879',
+      expectedProxy: '0899999999',
     });
     expect(outcome.status).toBe('confirmed');
   });
@@ -90,7 +90,7 @@ describe('confirmAgainstProvider', () => {
     const outcome = confirmAgainstProvider({
       provider: { amount: 237.07, reference: 'X1' },
       expectedAmount: 237.07,
-      expectedProxy: '0998756879',
+      expectedProxy: '0899999999',
     });
     expect(outcome.status).toBe('confirmed');
   });
