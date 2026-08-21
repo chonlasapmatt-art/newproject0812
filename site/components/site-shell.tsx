@@ -2,13 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { CircleUserRound, Menu, ShoppingBag, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useCartStore } from '../stores/cart-store';
+import { BootScreen } from './boot-screen';
 import { ImJaiMark } from './brand-logo';
 import { CartDrawer } from './cart-drawer';
+import { FlyToCart } from './fly-to-cart';
 import { ImJaiAssistant } from './imjai-assistant';
+import { RouteTransition } from './route-transition';
+import { TactileLayer } from './tactile-layer';
 
 const links = [
   { href: '/', label: 'หน้าแรก' },
@@ -21,36 +25,13 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   const openCart = useCartStore((state) => state.open);
   const lines = useCartStore((state) => state.lines);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [intro, setIntro] = useState(false);
-  const reducedMotion = useReducedMotion();
 
-  useEffect(() => {
-    let closeTimer = 0;
-    const startTimer = window.setTimeout(() => {
-      if (sessionStorage.getItem('imjai-intro-seen')) return;
-      sessionStorage.setItem('imjai-intro-seen', '1');
-      setIntro(true);
-      closeTimer = window.setTimeout(() => setIntro(false), reducedMotion ? 80 : 1050);
-    }, 0);
-    return () => { window.clearTimeout(startTimer); window.clearTimeout(closeTimer); };
-  }, [reducedMotion]);
 
   const count = lines.reduce((sum, line) => sum + line.quantity, 0);
 
   return (
     <>
-      <AnimatePresence>
-        {intro && (
-          <motion.div className="intro-screen" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: .25 }}>
-            <div className="intro-logo">
-              <span className="intro-steam intro-steam-a" />
-              <span className="intro-steam intro-steam-b" />
-              <span>อ</span>
-            </div>
-            <b>IMJAI</b><small>CAFE &amp; KITCHEN</small>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <BootScreen />
 
       <header className="site-header">
         <div className="site-header-inner">
@@ -85,8 +66,10 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         )}
       </AnimatePresence>
 
-      {children}
+      <RouteTransition>{children}</RouteTransition>
       <CartDrawer />
+      <FlyToCart />
+      <TactileLayer />
       <ImJaiAssistant />
       <footer className="site-footer">
         <div className="footer-brand"><ImJaiMark size={44} title={null} /><div><b>ImJai Cafe &amp; Kitchen</b><small>รสชาติของความอิ่มใจ ในทุกคำที่ทาน</small></div></div>
