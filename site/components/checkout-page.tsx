@@ -11,8 +11,9 @@ import { cartTotals, lineTotal } from '../lib/cart';
 import { STORE } from '../lib/catalog';
 import { decodeSlipImage } from '../lib/decode-slip-image';
 import { getOrderRef, getServerOrderRef, renewOrderRef, subscribeOrderRef } from '../lib/order-ref';
+import { addOrder, type StoredOrder } from '../lib/orders';
 import { buildPromptPayPayload, describeAmount } from '../lib/promptpay';
-import { useCan } from '../lib/session';
+import { useCan, useSession } from '../lib/session';
 import { slipReference } from '../lib/slip-verify';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { PromptPayCard } from './promptpay-card';
@@ -37,6 +38,7 @@ export function CheckoutPage() {
   // Browsing and filling a basket stay open to everyone; an account is asked
   // for once, here, where it starts paying for itself in order history.
   const { canOrder } = useCan();
+  const session = useSession();
   const { lines, coupon, setCoupon, clear } = useCartStore();
   const [submitting, setSubmitting] = useState(false);
   const [slip, setSlip] = useState<File | null>(null);
@@ -93,7 +95,10 @@ export function CheckoutPage() {
     const { idempotencyKey, orderNumber } = orderRef;
     // payableAmount carries the satang suffix the QR was built with; slip
     // verification matches the incoming transfer against exactly this figure.
-    const draft = { orderNumber, idempotencyKey, ...values, lines, totals, payableAmount: charge?.payable ?? totals.total, slipReference: slipScan?.state === 'read' ? slipScan.reference : null, paymentNote: null as string | null, status: 'pending', createdAt: new Date().toISOString(), paymentStatus: values.payment === 'promptpay' ? 'pending_verification' : 'unpaid' };
+    // accountEmail is what lets the customer see this order under "ออเดอร์ของ
+    // ฉัน" and lets the assistant answer "ออเดอร์ฉันถึงไหนแล้ว" without asking
+    // them to type a reference they no longer have.
+    const draft: StoredOrder = { orderNumber, idempotencyKey, ...values, lines, totals, payableAmount: charge?.payable ?? totals.total, slipReference: slipScan?.state === 'read' ? slipScan.reference : null, paymentNote: null, status: 'pending', createdAt: new Date().toISOString(), paymentStatus: values.payment === 'promptpay' ? 'pending_verification' : 'unpaid', accountEmail: session.user?.email ?? null };
     try {
       if (isSupabaseConfigured && supabase) {
         const { data, error } = await supabase.functions.invoke('create-order', { body: { idempotencyKey, customer: { name: values.name, phone: values.phone }, fulfilment: values.fulfilment, address: values.address, note: values.note, paymentMethod: values.payment, coupon: values.coupon, items: lines.map((line) => ({ sku: line.sku, quantity: line.quantity, options: line.options, addOns: line.addOns?.map((item) => item.name), note: line.note })) } });
@@ -116,8 +121,7 @@ export function CheckoutPage() {
           }
         }
       }
-      const orders = JSON.parse(localStorage.getItem('imjai-orders') ?? '[]');
-      localStorage.setItem('imjai-orders', JSON.stringify([draft, ...orders].slice(0, 20)));
+      addOrder(draft);
       setCoupon(values.coupon ?? ''); clear(); renewOrderRef();
       router.push(`/track?order=${encodeURIComponent(draft.orderNumber)}&created=1`);
     } catch {

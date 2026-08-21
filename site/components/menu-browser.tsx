@@ -4,7 +4,8 @@ import { motion } from 'motion/react';
 import { Check, ChevronDown, Minus, Plus, Search, SlidersHorizontal, Star, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { CATEGORIES, MENU_ITEMS, type MenuCategory, type MenuItem } from '../lib/catalog';
+import { CATEGORIES, type MenuCategory, type MenuItem } from '../lib/catalog';
+import { useMenu, useMenuItem } from '../lib/menu-admin';
 import { Tilt } from './tilt';
 import { useAddToCart } from '../lib/add-to-cart';
 
@@ -16,19 +17,20 @@ export function MenuBrowser() {
   const [category, setCategory] = useState<'all' | MenuCategory>(CATEGORIES.some((item) => item.id === initialCategory) ? initialCategory : 'all');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortValue>('recommended');
-  const [selected, setSelected] = useState<MenuItem | null>(() => {
-    const sku = params.get('item');
-    return sku ? MENU_ITEMS.find((item) => item.sku === sku) ?? null : null;
-  });
+  // The sheet holds a SKU rather than a copy of the dish, so a price or stock
+  // change the shop makes while it is open reaches the customer looking at it.
+  const [selectedSku, setSelectedSku] = useState<string | null>(() => params.get('item'));
+  const menu = useMenu();
+  const selected = useMenuItem(selectedSku);
 
   const items = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('th');
-    const result = MENU_ITEMS.filter((item) => (category === 'all' || item.category === category) && (!normalized || `${item.name} ${item.description} ${item.ingredients}`.toLocaleLowerCase('th').includes(normalized)));
+    const result = menu.filter((item) => (category === 'all' || item.category === category) && (!normalized || `${item.name} ${item.description} ${item.ingredients}`.toLocaleLowerCase('th').includes(normalized)));
     if (sort === 'price-low') return result.sort((a, b) => a.price - b.price);
     if (sort === 'price-high') return result.sort((a, b) => b.price - a.price);
     if (sort === 'popular') return result.sort((a, b) => Number(b.featured) - Number(a.featured));
     return result.sort((a, b) => Number(b.chefChoice) - Number(a.chefChoice));
-  }, [category, query, sort]);
+  }, [menu, category, query, sort]);
 
   return (
     <main className="menu-page">
@@ -41,11 +43,11 @@ export function MenuBrowser() {
       <section className="catalog-section">
         <div className="catalog-heading"><p>พบ <b>{items.length}</b> เมนู</p><span>ข้อมูลสินค้าและสต็อกล่าสุด</span></div>
         {items.length ? <div className="catalog-grid">{items.map((item, index) => <Tilt key={item.sku} strength={7} lift={12}><motion.article className={`catalog-card ${!item.available ? 'sold-out' : ''}`} key={item.sku} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 8) * .035 }}>
-          <button className={`catalog-art ${item.tone}`} onClick={() => setSelected(item)} disabled={!item.available} aria-label={`ดูรายละเอียด ${item.name}`}><span>{item.emoji}</span>{item.chefChoice && <em><Star size={12} fill="currentColor" /> Chef&apos;s Choice</em>}{!item.available && <b>หมดวันนี้</b>}<small>เหลือ {item.stock}</small></button>
-          <div className="catalog-copy"><p>{CATEGORIES.find((categoryItem) => categoryItem.id === item.category)?.label}</p><div className="catalog-title"><h2>{item.name}</h2><b>฿{item.price}</b></div><span>{item.description}</span>{item.allergens.length > 0 && <small>สารก่อภูมิแพ้: {item.allergens.join(', ')}</small>}<button disabled={!item.available} onClick={() => setSelected(item)}>{item.available ? 'เลือกตัวเลือก' : 'สินค้าหมด'} <Plus size={16} /></button></div>
+          <button className={`catalog-art ${item.tone}`} onClick={() => setSelectedSku(item.sku)} disabled={!item.available} aria-label={`ดูรายละเอียด ${item.name}`}><span>{item.emoji}</span>{item.chefChoice && <em><Star size={12} fill="currentColor" /> Chef&apos;s Choice</em>}{!item.available && <b>หมดวันนี้</b>}<small>เหลือ {item.stock}</small></button>
+          <div className="catalog-copy"><p>{CATEGORIES.find((categoryItem) => categoryItem.id === item.category)?.label}</p><div className="catalog-title"><h2>{item.name}</h2><b>฿{item.price}</b></div><span>{item.description}</span>{item.allergens.length > 0 && <small>สารก่อภูมิแพ้: {item.allergens.join(', ')}</small>}<button disabled={!item.available} onClick={() => setSelectedSku(item.sku)}>{item.available ? 'เลือกตัวเลือก' : 'สินค้าหมด'} <Plus size={16} /></button></div>
         </motion.article></Tilt>)}</div> : <div className="no-results"><span>🔎</span><h2>ยังไม่พบเมนูที่ค้นหา</h2><p>ลองเปลี่ยนคำค้นหรือเลือกหมวดหมู่อื่นนะคะ</p></div>}
       </section>
-      <ProductModal key={selected?.sku ?? 'none'} item={selected} onClose={() => setSelected(null)} />
+      <ProductModal key={selected?.sku ?? 'none'} item={selected} onClose={() => setSelectedSku(null)} />
     </main>
   );
 }

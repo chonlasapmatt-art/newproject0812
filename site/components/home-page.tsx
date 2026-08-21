@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { ArrowDownRight, ArrowRight, Clock3, Heart, MapPin, PackageCheck, Quote, ShieldCheck, Sparkles, Star, UtensilsCrossed } from 'lucide-react';
-import { MENU_ITEMS, STORE } from '../lib/catalog';
+import { STORE } from '../lib/catalog';
+import { useMenu } from '../lib/menu-admin';
 import { Tilt } from './tilt';
 import { useAddToCart } from '../lib/add-to-cart';
 
-const favourites = MENU_ITEMS.filter((item) => item.featured).slice(0, 4);
 const categories = [
   { name: 'กาแฟ', href: '/menu?category=coffee', icon: '☕', note: 'เมล็ดอาราบิก้าคั่วกลาง' },
   { name: 'อาหาร', href: '/menu?category=food', icon: '🍳', note: 'ทำสดใหม่ทุกจาน' },
@@ -17,6 +17,8 @@ const categories = [
 
 export function HomePage() {
   const addToCart = useAddToCart();
+  // Sold out at the till should read as sold out on the front page.
+  const favourites = useMenu().filter((item) => item.featured).slice(0, 4);
   return (
     <main>
       <section className="hero home-hero" id="top">

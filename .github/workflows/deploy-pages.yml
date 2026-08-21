@@ -72,6 +72,11 @@ jobs:
         run: npm run build:pages
         env:
           PAGES_BASE_PATH: ""
+          # The dashboard tests need an account the build treats as staff, and
+          # the admin list is baked in at build time — a test cannot grant
+          # itself the role at runtime. This copy is thrown away after the
+          # suite runs; the published build below uses the repository variable.
+          NEXT_PUBLIC_ADMIN_EMAILS: admin@imjai.test
 
       - name: End-to-end tests against the exported site
         run: |

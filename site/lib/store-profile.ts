@@ -107,3 +107,14 @@ export const pendingRealData = [
   'เวลาเปิด–ปิดจริง',
   'เรื่องราวร้านในแบบที่เจ้าของอยากเล่า',
 ] as const;
+
+/**
+ * Shortcuts for the two channels code quotes inline — a rejected slip telling
+ * the customer who to call, the assistant handing out the LINE id. Reading
+ * them from the same list the contact page renders means one edit fixes every
+ * mention.
+ */
+const channel = (id: string) => CONTACT_CHANNELS.find((entry) => entry.id === id)?.value ?? '';
+export const SHOP_PHONE = channel('phone');
+export const SHOP_LINE = channel('line');
+export const SHOP_LINE_URL = CONTACT_CHANNELS.find((entry) => entry.id === 'line')?.href ?? '';

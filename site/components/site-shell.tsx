@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { LayoutDashboard, Menu, ShoppingBag, X } from 'lucide-react';
 import { useState } from 'react';
 import { useCan } from '../lib/session';
+import { SHOP_LINE, SHOP_LINE_URL, SHOP_PHONE, STORE_PROFILE } from '../lib/store-profile';
 import { useCartStore } from '../stores/cart-store';
 import { AccountMenu } from './account-menu';
 import { BootScreen } from './boot-screen';
@@ -34,6 +35,10 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   // The dashboard link is only rendered for staff. The page guards itself as
   // well — hiding a link is presentation, not access control.
   const { isAdmin, isSignedIn } = useCan();
+
+  // The dashboard is a working screen, not a page of the shop: the customer
+  // assistant and the marketing footer are noise behind a till.
+  const backOfHouse = pathname?.startsWith('/admin') ?? false;
 
 
   const count = lines.reduce((sum, line) => sum + line.quantity, 0);
@@ -70,7 +75,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             <motion.aside className="mobile-nav" initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 320 }}>
               <div className="drawer-title"><span>เมนู</span><button className="icon-button" onClick={() => setMobileOpen(false)} aria-label="ปิดเมนู"><X /></button></div>
               <nav>{[...links, ...(isAdmin ? [{ href: '/admin', label: 'แดชบอร์ด' }] : []), { href: '/account', label: isSignedIn ? 'บัญชีของฉัน' : 'เข้าสู่ระบบ' }].map((link) => <Link prefetch={false} href={link.href} onClick={() => setMobileOpen(false)} key={link.href}>{link.label}<span>↗</span></Link>)}</nav>
-              <div className="mobile-nav-note"><b>เปิดทุกวัน</b><span>07:00–20:00 น.</span><span>LINE @imjaicafe</span></div>
+              <div className="mobile-nav-note"><b>{STORE_PROFILE.hours.note}</b><span>{STORE_PROFILE.hours.everyday}</span><span>LINE {SHOP_LINE}</span></div>
             </motion.aside>
           </>
         )}
@@ -80,13 +85,27 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
       <CartDrawer />
       <FlyToCart />
       <TactileLayer />
-      <ImJaiAssistant />
-      <footer className="site-footer">
-        <div className="footer-brand"><ImJaiMark size={44} title={null} /><div><b>ImJai Cafe &amp; Kitchen</b><small>รสชาติของความอิ่มใจ ในทุกคำที่ทาน</small></div></div>
-        <div><b>แวะมาหาเรา</b><span>88/12 ถนนสุขุมวิท เขตวัฒนา กรุงเทพฯ</span><span>ทุกวัน 07:00–20:00 น.</span></div>
-        <div><b>ติดต่อ</b><a href="tel:021234567">02-123-4567</a><a href="https://line.me/R/ti/p/%40imjaicafe" rel="noreferrer" target="_blank">LINE @imjaicafe</a></div>
-        <p>© 2026 ImJai Cafe &amp; Kitchen</p>
-      </footer>
+      {!backOfHouse && <ImJaiAssistant />}
+      {!backOfHouse && (
+        <footer className="site-footer">
+          <div className="footer-brand">
+            <ImJaiMark size={44} title={null} />
+            <div><b>{STORE_PROFILE.name}</b><small>{STORE_PROFILE.tagline}</small></div>
+          </div>
+          <div>
+            <b>แวะมาหาเรา</b>
+            <span>{STORE_PROFILE.location.address}</span>
+            <span>{STORE_PROFILE.hours.note} {STORE_PROFILE.hours.everyday}</span>
+          </div>
+          <div>
+            <b>ติดต่อ</b>
+            <a href={`tel:${SHOP_PHONE.replace(/\D/g, '')}`}>{SHOP_PHONE}</a>
+            <a href={SHOP_LINE_URL} rel="noreferrer" target="_blank">LINE {SHOP_LINE}</a>
+          </div>
+          {/* story.since is stated in the Buddhist era, as the about page shows it. */}
+          <p>© {STORE_PROFILE.story.since - 543} {STORE_PROFILE.name}</p>
+        </footer>
+      )}
     </>
   );
 }
