@@ -63,10 +63,24 @@ jobs:
       - name: Install the browser the end-to-end suite drives
         run: npx playwright install --with-deps chromium
 
-      - name: End-to-end tests
-        run: npm run test:e2e
+      # The end-to-end suite runs against the exported files rather than a dev
+      # server: those are what actually get published, and a dev server is one
+      # more thing that can behave differently on a runner than it does locally.
+      # This copy is built root-relative so it can be served from /.
+      - name: Build a root-relative copy for the end-to-end suite
+        run: npm run build:pages
+        env:
+          PAGES_BASE_PATH: ""
 
-      - name: Build the static site
+      - name: End-to-end tests against the exported site
+        run: |
+          npx --yes serve out -l 4173 &
+          npx --yes wait-on -t 60000 http://localhost:4173
+          npm run test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:4173
+
+      - name: Build the static site for the project subpath
         run: npm run build:pages
 
       # A .nojekyll file stops GitHub from dropping the _next directory, whose

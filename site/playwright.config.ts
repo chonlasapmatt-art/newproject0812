@@ -7,19 +7,34 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined;
 
+/**
+ * Where the suite points.
+ *
+ * Locally it drives the dev server, which it starts itself. CI sets
+ * PLAYWRIGHT_BASE_URL to a static server holding the exported build — the same
+ * files that get published — so the tests exercise what ships rather than a
+ * development server that never leaves the runner.
+ */
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
+const startsItsOwnServer = !process.env.PLAYWRIGHT_BASE_URL;
+
 export default defineConfig({
   testDir: './e2e',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL,
     trace: 'on-first-retry',
     launchOptions: { executablePath },
   },
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: true,
-    timeout: 180_000,
-  },
+  ...(startsItsOwnServer
+    ? {
+        webServer: {
+          command: 'npm run dev',
+          url: baseURL,
+          reuseExistingServer: true,
+          timeout: 180_000,
+        },
+      }
+    : {}),
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'mobile', use: { ...devices['iPhone 13'], browserName: 'chromium' } },
