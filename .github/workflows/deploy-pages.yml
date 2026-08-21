@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - claude/imjai-n8n-customer-service-hgwcne
+      - claude/website-accessibility-check-blp19v
     paths:
       - "site/**"
       - ".github/workflows/deploy-pages.yml"
@@ -30,23 +30,57 @@ jobs:
         working-directory: site
     env:
       DEPLOY_TARGET: github-pages
-      NEXT_PUBLIC_SITE_URL: https://${{ github.repository_owner }}.github.io/restaurant-im-jai-ai-agent
+      # GitHub serves a project site from /<repository>, so the base path and
+      # the canonical URL are read from the repository rather than written in.
+      PAGES_BASE_PATH: /${{ github.event.repository.name }}
+      NEXT_PUBLIC_SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       NEXT_PUBLIC_ADMIN_PREVIEW_MODE: "false"
+      # The PromptPay destination is public by necessity: it is encoded in every
+      # QR the checkout renders, and it is the same number printed on the shop's
+      # counter standee. It receives money and cannot be used to withdraw any.
+      # Set the repository variables to point the site at a different account.
+      NEXT_PUBLIC_PROMPTPAY_ID: ${{ vars.NEXT_PUBLIC_PROMPTPAY_ID || '0998756879' }}
+      NEXT_PUBLIC_PROMPTPAY_NAME: ${{ vars.NEXT_PUBLIC_PROMPTPAY_NAME || 'CHONLASAP MATTAWEEWONG' }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: site/package-lock.json
+
       - run: npm ci
-      - run: npm test
-      - run: npm run build:pages
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Install the browser the end-to-end suite drives
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: Build the static site
+        run: npm run build:pages
+
+      # A .nojekyll file stops GitHub from dropping the _next directory, whose
+      # leading underscore Jekyll treats as private.
+      - name: Keep the _next directory
+        run: touch out/.nojekyll
+
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site/out
+
       - id: deployment
         uses: actions/deploy-pages@v4
