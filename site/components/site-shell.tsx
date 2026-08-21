@@ -3,14 +3,16 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
-import { CircleUserRound, LayoutDashboard, Menu, ShoppingBag, X } from 'lucide-react';
+import { LayoutDashboard, Menu, ShoppingBag, X } from 'lucide-react';
 import { useState } from 'react';
 import { useCan } from '../lib/session';
 import { useCartStore } from '../stores/cart-store';
+import { AccountMenu } from './account-menu';
 import { BootScreen } from './boot-screen';
 import { ImJaiMark } from './brand-logo';
 import { CartDrawer } from './cart-drawer';
 import { FlyToCart } from './fly-to-cart';
+import { PageChrome } from './page-chrome';
 import { ImJaiAssistant } from './imjai-assistant';
 import { RouteTransition } from './route-transition';
 import { TactileLayer } from './tactile-layer';
@@ -39,6 +41,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <BootScreen />
+      <PageChrome />
 
       <header className="site-header">
         <div className="site-header-inner">
@@ -51,7 +54,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             {isAdmin && <Link prefetch={false} className={`nav-admin ${pathname === '/admin' ? 'active' : ''}`} href="/admin"><LayoutDashboard size={14} /> แดชบอร์ด</Link>}
           </nav>
           <div className="header-actions">
-            <Link prefetch={false} className={`icon-button account-button ${isSignedIn ? 'is-signed-in' : ''}`} href="/account" aria-label={isSignedIn ? 'บัญชีของฉัน' : 'เข้าสู่ระบบ'}><CircleUserRound size={21} /></Link>
+            <AccountMenu />
             <button className="cart-button" onClick={openCart} aria-label={`เปิดตะกร้า มี ${count} รายการ`}>
               <ShoppingBag size={19} /><span className="cart-label">ตะกร้า</span>{count > 0 && <b>{count}</b>}
             </button>

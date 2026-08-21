@@ -5,8 +5,8 @@ import { Check, ChevronDown, Minus, Plus, Search, SlidersHorizontal, Star, X } f
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { CATEGORIES, MENU_ITEMS, type MenuCategory, type MenuItem } from '../lib/catalog';
-import { useCartStore } from '../stores/cart-store';
 import { Tilt } from './tilt';
+import { useAddToCart } from '../lib/add-to-cart';
 
 type SortValue = 'recommended' | 'price-low' | 'price-high' | 'popular';
 
@@ -51,7 +51,7 @@ export function MenuBrowser() {
 }
 
 function ProductModal({ item, onClose }: { item: MenuItem | null; onClose: () => void }) {
-  const add = useCartStore((state) => state.add);
+  const addToCart = useAddToCart();
   const [quantity, setQuantity] = useState(1);
   const [options, setOptions] = useState<Record<string, string>>(() => Object.fromEntries((item?.options ?? []).map((group) => [group.label, group.values[0]])));
   const [addOns, setAddOns] = useState<string[]>([]);
@@ -60,7 +60,7 @@ function ProductModal({ item, onClose }: { item: MenuItem | null; onClose: () =>
   if (!item) return null;
   const selectedAddOns = (item.addOns ?? []).filter((addOn) => addOns.includes(addOn.name));
   const eachPrice = item.price + selectedAddOns.reduce((sum, addOn) => sum + addOn.price, 0);
-  const submit = () => { add({ sku: item.sku, name: item.name, unitPrice: item.price, quantity, options: Object.values(options), addOns: selectedAddOns, note: note.trim().slice(0, 160), emoji: item.emoji }); onClose(); };
+  const submit = () => { addToCart({ sku: item.sku, name: item.name, unitPrice: item.price, quantity, options: Object.values(options), addOns: selectedAddOns, note: note.trim().slice(0, 160), emoji: item.emoji }); onClose(); };
 
   return <><motion.button className="modal-backdrop" aria-label="ปิดรายละเอียดเมนู" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} /><motion.section className="product-modal" role="dialog" aria-modal="true" aria-label={`รายละเอียด ${item.name}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
     <button className="modal-close" onClick={onClose} aria-label="ปิด"><X /></button>

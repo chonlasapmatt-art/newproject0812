@@ -9,6 +9,8 @@ import { expect, signIn, test } from './fixtures';
 
 /** Fill a basket past the store's ฿100 minimum. */
 async function addToCart(page: Page, quantity = 3) {
+  // Adding needs an account now, so every basket here starts signed in.
+  await signIn(page);
   await page.goto('/menu');
   await page.waitForLoadState('networkidle');
   await page.getByRole('button', { name: /เลือกตัวเลือก/ }).first().click();
@@ -58,24 +60,10 @@ test('a PromptPay order cannot be submitted without a slip', async ({ page }) =>
 });
 
 test('paying cash needs no slip and stays submittable', async ({ page }) => {
-  await signIn(page);
   await addToCart(page);
   await page.goto('/checkout');
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('.ppay-card')).toHaveCount(0);
   await expect(page.locator('.place-order')).toBeEnabled();
-});
-
-test('a visitor without an account is asked to sign in, not turned away', async ({ page }) => {
-  // Browsing and filling a basket stay open; the account is asked for here.
-  await addToCart(page);
-  await page.goto('/checkout');
-  await page.waitForLoadState('networkidle');
-
-  // The basket they built is still in front of them, not discarded.
-  await expect(page.locator('.summary-lines')).toBeVisible();
-  await expect(page.locator('.signin-gate')).toBeVisible();
-  await expect(page.locator('.place-order')).toBeDisabled();
-  await expect(page.locator('.place-order')).toContainText('เข้าสู่ระบบ');
 });

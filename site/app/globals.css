@@ -1062,3 +1062,91 @@ h1, h2, h3, .hero h1, .brand b {
 .fact-grid > *, .contact-grid > * { height: 100%; }
 .fact-card { display: flex; flex-direction: column; }
 .fact-card small { margin-top: auto; padding-top: 6px; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ACCOUNT MENU
+   ═══════════════════════════════════════════════════════════════════════ */
+.account-menu { position: relative; }
+.account-chip {
+  display: inline-flex; align-items: center; gap: 9px;
+  height: 40px; padding: 0 14px 0 5px;
+  border: 1px solid var(--line); border-radius: 99px;
+  background: var(--paper); color: var(--ink);
+  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  box-shadow: var(--lift-1);
+  transition: box-shadow .25s var(--ease-enter), transform .2s var(--ease-move);
+}
+.account-chip:hover { box-shadow: var(--lift-2); transform: translateY(-1px); }
+.account-initial {
+  display: grid; place-items: center; width: 30px; height: 30px;
+  border-radius: 50%; background: var(--sage); color: #fff;
+  font-family: var(--font-body); font-size: 13px; font-weight: 700;
+}
+.account-name { max-width: 108px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.account-panel {
+  position: absolute; right: 0; top: calc(100% + 10px); z-index: 40;
+  min-width: 244px; padding: 8px;
+  border-radius: 16px; background: var(--paper);
+  border: 1px solid var(--line); box-shadow: var(--lift-4);
+  transform-origin: top right;
+}
+.account-panel-head { padding: 11px 12px 13px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+.account-panel-head b { display: block; font-size: 14.5px; }
+.account-panel-head small { display: block; margin-top: 2px; color: #8a7669; font-size: 12px; word-break: break-all; }
+.account-panel-head em { display: block; margin-top: 7px; font-style: normal; color: var(--orange); font-size: 11.5px; }
+
+.account-panel a, .account-panel button {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  padding: 10px 12px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--ink);
+  font-family: inherit; font-size: 14px; text-align: left; cursor: pointer;
+  transition: background .18s var(--ease-move);
+}
+.account-panel a:hover, .account-panel button:hover { background: var(--cream); }
+.account-signout { margin-top: 4px; border-top: 1px solid var(--line) !important; border-radius: 0 0 10px 10px !important; color: #a63a2c !important; }
+.account-signout:hover { background: #fdf1ef !important; }
+
+@media (max-width: 900px) { .account-name { display: none; } .account-chip { padding: 0 5px; } }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PAGE DETAIL
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* How far through the page you are, without having to read the scrollbar. */
+.read-progress {
+  position: fixed; inset: 0 0 auto; z-index: 55;
+  height: 2.5px; transform-origin: left center;
+  background: linear-gradient(90deg, var(--orange), var(--sage));
+  pointer-events: none;
+}
+
+/* Paper grain. Cream at full flatness looks like a swatch; a trace of noise
+   makes it read as a surface the cards are resting on. Drawn as an inline SVG
+   so it costs no request and stays crisp at any density. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .32;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.055'/%3E%3C/svg%3E");
+}
+/* Everything the visitor interacts with sits above the grain. */
+.site-header, main, .site-footer, .cart-drawer, .drawer-backdrop,
+.product-modal, .modal-backdrop, .boot, .account-panel { position: relative; z-index: 1; }
+.site-header { z-index: 20; }
+
+/* Section headings earn a mark of their own rather than floating loose. */
+.section-heading .eyebrow::before,
+.page-hero .eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 18px; height: 1.5px;
+  margin-right: 9px; vertical-align: middle;
+  background: currentColor;
+  opacity: .75;
+}
+
+@media (prefers-reduced-motion: reduce) { .read-progress { display: none; } }

@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { motion } from 'motion/react';
 import { ArrowDownRight, ArrowRight, Clock3, Heart, MapPin, PackageCheck, Quote, ShieldCheck, Sparkles, Star, UtensilsCrossed } from 'lucide-react';
 import { MENU_ITEMS, STORE } from '../lib/catalog';
-import { useCartStore } from '../stores/cart-store';
 import { Tilt } from './tilt';
+import { useAddToCart } from '../lib/add-to-cart';
 
 const favourites = MENU_ITEMS.filter((item) => item.featured).slice(0, 4);
 const categories = [
@@ -16,7 +16,7 @@ const categories = [
 ];
 
 export function HomePage() {
-  const add = useCartStore((state) => state.add);
+  const addToCart = useAddToCart();
   return (
     <main>
       <section className="hero home-hero" id="top">
@@ -54,7 +54,7 @@ export function HomePage() {
                 {item.chefChoice && <em><Star size={12} fill="currentColor" /> Chef&apos;s Choice</em>}
               </Link>
               <div className="menu-card-copy"><div><h3>{item.name}</h3><p>{item.description}</p></div><b>฿{item.price}</b></div>
-              <button className="quick-add" onClick={() => add({ sku: item.sku, name: item.name, unitPrice: item.price, quantity: 1, emoji: item.emoji })}>+ เพิ่มลงตะกร้า</button>
+              <button className="quick-add" onClick={() => addToCart({ sku: item.sku, name: item.name, unitPrice: item.price, quantity: 1, emoji: item.emoji })}>+ เพิ่มลงตะกร้า</button>
             </motion.article></Tilt>
           ))}
         </div>
