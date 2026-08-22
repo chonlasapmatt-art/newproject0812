@@ -15,6 +15,8 @@ import { MenuBrowser } from '../components/menu-browser';
 import { CheckoutPage } from '../components/checkout-page';
 import { TrackPage } from '../components/track-page';
 import { AccountPage } from '../components/account-page';
+import { AboutPage } from '../components/about-page';
+import { ContactPage } from '../components/contact-page';
 import { AdminDashboard } from '../components/admin-dashboard';
 import { useRoute } from './router';
 
@@ -41,7 +43,15 @@ const ROUTES: Record<string, () => React.ReactElement> = {
       <TrackPage />
     </Suspense>
   ),
-  '/account': () => <AccountPage />,
+  // AccountPage reads ?next= to send a customer back where they came from, so
+  // it needs the same Suspense boundary the app router build gives it.
+  '/account': () => (
+    <Suspense fallback={<Loading />}>
+      <AccountPage />
+    </Suspense>
+  ),
+  '/about': () => <AboutPage />,
+  '/contact': () => <ContactPage />,
   '/admin': () => <AdminDashboard />,
 };
 

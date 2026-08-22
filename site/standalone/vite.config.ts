@@ -31,6 +31,12 @@ export default defineConfig({
     'process.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(''),
     'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(''),
     'process.env.NEXT_PUBLIC_ADMIN_PREVIEW_MODE': JSON.stringify('false'),
+    // Any NEXT_PUBLIC_* the code reads has to appear here. One left out stays
+    // in the bundle as a literal `process.env.X`, and `process` does not exist
+    // in a browser — the page would die on the first render rather than fall
+    // back to the empty default the code was written to expect.
+    'process.env.NEXT_PUBLIC_ADMIN_EMAILS': JSON.stringify(process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? ''),
+    'process.env.NEXT_PUBLIC_SITE_URL': JSON.stringify(process.env.NEXT_PUBLIC_SITE_URL ?? ''),
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
   plugins: [react(), viteSingleFile()],
