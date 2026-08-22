@@ -110,4 +110,24 @@ export function anOrder(over: Record<string, unknown> = {}) {
   };
 }
 
+/**
+ * The key the dashboard asks for while the site has no database.
+ *
+ * Read from the same module the app reads it from, so rotating the key does
+ * not leave the suite asserting against a value the site no longer accepts.
+ */
+export { DASHBOARD_KEY } from '../lib/dashboard-access';
+
+/** Hand the browser the key before the app boots, as a returning shop has it. */
+export async function unlockDashboard(page: import('@playwright/test').Page) {
+  const { DASHBOARD_KEY: key } = await import('../lib/dashboard-access');
+  await page.addInitScript((value) => {
+    try {
+      localStorage.setItem('imjai-dashboard-unlocked', value);
+    } catch {
+      // Storage unavailable: the test will meet the locked door and say so.
+    }
+  }, key);
+}
+
 export { expect } from '@playwright/test';

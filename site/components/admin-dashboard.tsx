@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { CATEGORIES } from '../lib/catalog';
 import { isEdited, readOverrides, resetMenuItem, updateMenuItem, useMenu } from '../lib/menu-admin';
 import { rise } from '../lib/motion';
@@ -36,6 +36,7 @@ import {
   type StoredOrder,
 } from '../lib/orders';
 import { isAdminListConfigured, isPreviewMode, setPreviewAdmin, useSession } from '../lib/session';
+import { getUnlockedServerSnapshot, getUnlockedSnapshot, subscribeUnlocked, unlock } from '../lib/dashboard-access';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { STORE_PROFILE, pendingRealData } from '../lib/store-profile';
 import { ImJaiMark } from './brand-logo';
@@ -477,6 +478,65 @@ function StoreSettings() {
   );
 }
 
+/**
+ * The door, while the site has no database.
+ *
+ * It asks for a key rather than offering a button, so the shop can hand out
+ * the site link without handing out the back office. What it cannot do is
+ * stop someone who reads the built JavaScript, and the screen says so instead
+ * of implying a lock it does not have.
+ */
+function PreviewGate({ signedIn }: { signedIn: boolean }) {
+  const [attempt, setAttempt] = useState('');
+  const [wrong, setWrong] = useState(false);
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (unlock(attempt)) {
+      setPreviewAdmin(true);
+      return;
+    }
+    setWrong(true);
+    setAttempt('');
+  };
+
+  if (!signedIn) {
+    return (
+      <main className="admin-lock">
+        <span><LockKeyhole /></span>
+        <h1>แดชบอร์ดร้าน</h1>
+        <p>เข้าสู่ระบบด้วยบัญชีของร้านก่อน แล้วจึงกรอกรหัสเปิดแดชบอร์ด</p>
+        <Link prefetch={false} className="primary-button" href="/account?next=/admin">เข้าสู่ระบบ</Link>
+      </main>
+    );
+  }
+
+  return (
+    <main className="admin-lock">
+      <span><LockKeyhole /></span>
+      <h1>แดชบอร์ดร้าน</h1>
+      <p>กรอกรหัสเปิดแดชบอร์ดของร้าน รหัสนี้จำไว้ในเบราว์เซอร์เครื่องนี้ ไม่ต้องกรอกซ้ำ</p>
+      <form className="admin-unlock" onSubmit={submit}>
+        <label className="sr-only" htmlFor="dashboard-key">รหัสเปิดแดชบอร์ด</label>
+        <input
+          id="dashboard-key"
+          type="password"
+          autoComplete="off"
+          value={attempt}
+          onChange={(event) => { setAttempt(event.target.value); setWrong(false); }}
+          placeholder="รหัสเปิดแดชบอร์ด"
+        />
+        <button type="submit" className="primary-button" disabled={!attempt.trim()}>เปิดแดชบอร์ด</button>
+      </form>
+      {wrong && <p className="admin-unlock-wrong">รหัสไม่ถูกต้อง ลองอีกครั้ง</p>}
+      <small>
+        <ShieldAlert /> รหัสนี้กันคนที่ได้ลิงก์เว็บไป แต่กันคนที่เปิดโค้ดอ่านไม่ได้
+        {isAdminListConfigured ? ' — เมื่อเชื่อม Supabase สิทธิ์จะย้ายไปตรวจที่ฐานข้อมูลแทน' : ' — เมื่อเชื่อม Supabase สิทธิ์จะย้ายไปตรวจที่ฐานข้อมูลแทน'}
+      </small>
+    </main>
+  );
+}
+
 export function AdminDashboard() {
   // The same session the header reads, so the link and the page can never
   // disagree about who is staff. Hiding the link is presentation; this is the
@@ -486,41 +546,22 @@ export function AdminDashboard() {
   const orders = useOrders();
   const [tab, setTab] = useState<Tab>('overview');
   const { status, role } = session;
+  // In preview the role is only half the answer; the key is the other half.
+  const unlocked = useSyncExternalStore(subscribeUnlocked, getUnlockedSnapshot, getUnlockedServerSnapshot);
+  const mayEnter = isPreviewMode ? role === 'admin' && unlocked : role === 'admin';
 
   if (status === 'loading') {
     return <main className="admin-lock"><span className="loading-ring" /><p>กำลังตรวจสอบสิทธิ์…</p></main>;
   }
 
-  if (role !== 'admin') {
+  if (!mayEnter) {
     /**
      * Two different situations, and the old screen showed the same wall for
      * both — which is why the shop could not tell whether it had been refused
      * or had simply never been set up. It said "ask your administrator" to the
      * person who is the administrator.
      */
-    if (isPreviewMode) {
-      return (
-        <main className="admin-lock">
-          <span><LockKeyhole /></span>
-          <h1>แดชบอร์ดร้าน</h1>
-          <p>
-            ตอนนี้เว็บยังไม่ได้เชื่อมฐานข้อมูล ออเดอร์และการแก้เมนูทั้งหมดจึงถูกเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น
-            — แดชบอร์ดจะแสดงเฉพาะข้อมูลของเครื่องคุณเอง ไม่มีข้อมูลของคนอื่นให้เห็น
-          </p>
-          {status === 'signed-in' ? (
-            <button type="button" className="primary-button" onClick={() => setPreviewAdmin(true)}>
-              เปิดแดชบอร์ดในโหมดพรีวิว
-            </button>
-          ) : (
-            <Link prefetch={false} className="primary-button" href="/account?next=/admin">เข้าสู่ระบบก่อน</Link>
-          )}
-          <small>
-            <ShieldAlert /> เมื่อเชื่อม Supabase แล้ว ปุ่มนี้จะใช้ไม่ได้อีก
-            {isAdminListConfigured ? ' และสิทธิ์จะตรวจจากรายชื่อแอดมินที่ตั้งไว้' : ' และต้องตั้งรายชื่อแอดมินก่อน'}
-          </small>
-        </main>
-      );
-    }
+    if (isPreviewMode) return <PreviewGate signedIn={status === 'signed-in'} />;
 
     return (
       <main className="admin-lock">

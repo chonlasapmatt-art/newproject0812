@@ -48,7 +48,18 @@ a:focus-visible, button:focus-visible { outline: 3px solid #f2a56c; outline-offs
 .hero { min-height: 760px; display: grid; grid-template-columns: 1.02fr .98fr; background: var(--cream); overflow: hidden; }
 .hero-copy { display: flex; flex-direction: column; justify-content: center; padding: 130px 5vw 70px max(5vw, calc((100vw - 1380px)/2 + 5vw)); }
 .eyebrow { margin: 0 0 22px; color: var(--orange); font-size: 11px; font-weight: 800; letter-spacing: .22em; }
-.hero h1 { margin: 0; max-width: 620px; font-family: var(--font-display); font-size: clamp(60px, 7vw, 106px); font-weight: 500; line-height: 1.12; letter-spacing: -.055em; }
+/* Thai display type is not tightened.
+
+   Negative tracking is a Latin trick: it closes the gaps between letterforms
+   that were drawn to stand apart. Thai letters carry marks above and below —
+   ไม้โท over มื้อ, สระอิ over อิ่ม — positioned against their own base glyph,
+   and tightening only moves the bases. The bases collide, the marks do not
+   follow, and a word like ธรรมดา packs into a block while ให้ใจ runs into the
+   word after it. At -.055em the headline was doing all three.
+
+   Line-height stays generous for the same reason: a mark stack needs the room
+   above the cap that a Latin face does not. */
+.hero h1 { margin: 0; max-width: 620px; font-family: var(--font-display); font-size: clamp(58px, 6.6vw, 98px); font-weight: 500; line-height: 1.16; letter-spacing: 0; word-spacing: .06em; }
 /* The accent word is an <em> so the reveal wrapper's own spans, which sit
    between the heading and the text, cannot inherit the accent colour. */
 .hero h1 em { color: var(--orange); font-style: italic; }
@@ -79,7 +90,7 @@ a:focus-visible, button:focus-visible { outline: 3px solid #f2a56c; outline-offs
 .menu-preview { max-width: 1280px; margin: auto; padding: 105px 5vw 120px; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 30px; margin-bottom: 50px; }
 .section-heading .eyebrow { margin-bottom: 13px; }
-.section-heading h2, .story-strip h2, .location h2 { margin: 0; font-family: var(--font-display); font-size: clamp(38px, 4vw, 58px); font-weight: 500; letter-spacing: -.035em; }
+.section-heading h2, .story-strip h2, .location h2 { margin: 0; font-family: var(--font-display); font-size: clamp(38px, 4vw, 58px); font-weight: 500; line-height: 1.18; letter-spacing: 0; }
 .section-heading > p { margin: 0 0 4px; color: #76655c; font-size: 14px; line-height: 1.7; }
 .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
 .menu-card { border-top: 1px solid var(--line); padding-top: 16px; }
@@ -216,7 +227,9 @@ button { color: inherit; }
    extra room the mask crops ไม้โท off the top and สระอุ off the bottom of a
    tightly-led display face. Pulling the padding back out with margin keeps
    the heading's metrics exactly where they were. */
-.reveal-line { display: block; overflow: hidden; padding: .16em 0 .1em; margin: -.16em 0 -.1em; }
+/* The mask needs clearance for marks in both directions — see RevealLines.
+   Widened along with the line-height so a tall stack like ื้ is never clipped. */
+.reveal-line { display: block; overflow: hidden; padding: .2em 0 .12em; margin: -.2em 0 -.12em; }
 .reveal-line > span { display: inline-block; will-change: transform; }
 
 /* A rule that arrives with the section it separates. */
@@ -593,6 +606,10 @@ button { color: inherit; }
 .admin-banner-exit { margin-left: auto; padding: 5px 11px; border: 1px solid #e0c99f; border-radius: 999px; background: white; color: #8a6a35; font-family: inherit; font-size: 10.5px; font-weight: 700; cursor: pointer; }
 .admin-banner-exit:hover { border-color: #8a6a35; }
 .admin-lock button.primary-button { border: 0; cursor: pointer; font-family: inherit; }
+.admin-unlock { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; }
+.admin-unlock input { min-width: 240px; min-height: 50px; padding: 0 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink); font-family: inherit; font-size: 14px; }
+.admin-unlock input:focus { outline: 2px solid var(--orange); outline-offset: 1px; }
+.admin-unlock-wrong { margin-top: 12px !important; color: #a04533; font-size: 13px; font-weight: 600; }
 .admin-banner { margin: 20px 0 0; padding: 11px 14px; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; border: 1px solid #e8d4b4; border-radius: 10px; background: #fdf5e6; color: #8a6a35; font-size: 11.5px; line-height: 1.6; }
 
 .admin-empty { margin: 26px 0; padding: 34px; border: 1px dashed var(--line); border-radius: 12px; background: white; color: #8a7a70; text-align: center; font-size: 12.5px; }

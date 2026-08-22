@@ -3,9 +3,10 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { CircleUserRound, LayoutDashboard, LogOut, Package, Repeat2, UserRound } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { EASE, useMotionOK } from '../lib/motion';
 import { isPreviewMode, setPreviewAdmin, useSession, useSignOut } from '../lib/session';
+import { getUnlockedServerSnapshot, getUnlockedSnapshot, subscribeUnlocked } from '../lib/dashboard-access';
 
 /**
  * The account control in the header.
@@ -21,6 +22,9 @@ export function AccountMenu() {
   const signOut = useSignOut();
   const motionOK = useMotionOK();
   const [open, setOpen] = useState(false);
+  // Nothing about the shop's back office shows until the key has been given
+  // once on /admin, so a visitor with the link sees an ordinary account menu.
+  const unlocked = useSyncExternalStore(subscribeUnlocked, getUnlockedSnapshot, getUnlockedServerSnapshot);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   // A menu that survives a click elsewhere, or Escape, is a menu that traps.
@@ -101,7 +105,7 @@ export function AccountMenu() {
               then the role comes from the database and this would be a way to
               grant yourself one.
             */}
-            {isPreviewMode && (
+            {isPreviewMode && unlocked && (
               <button
                 type="button"
                 role="menuitem"

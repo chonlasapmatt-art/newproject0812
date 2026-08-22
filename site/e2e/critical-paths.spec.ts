@@ -1,4 +1,4 @@
-import { expect, signIn, test } from './fixtures';
+import { DASHBOARD_KEY, expect, signIn, test, unlockDashboard } from './fixtures';
 
 /**
  * The paths that must never break: a customer getting a dish into their
@@ -53,20 +53,42 @@ test('an anonymous visitor cannot view admin data', async ({ page }) => {
  * of this case is the wording: the old screen told the owner to contact their
  * administrator, which is the owner.
  */
-test('the shop can reach its own dashboard while the site is in preview', async ({ page }) => {
+test('the shop opens its own dashboard with the key, and nobody else can', async ({ page }) => {
   await signIn(page, 'owner@imjai.test');
   await page.goto('/admin');
   await page.waitForLoadState('networkidle');
 
-  await expect(page.getByRole('heading', { name: 'แดชบอร์ดร้าน' })).toBeVisible();
-  await page.getByRole('button', { name: /เปิดแดชบอร์ดในโหมดพรีวิว/ }).click();
+  // A wrong key is refused and says so, rather than silently doing nothing.
+  await page.getByLabel('รหัสเปิดแดชบอร์ด').fill('let-me-in');
+  await page.getByRole('button', { name: 'เปิดแดชบอร์ด' }).click();
+  await expect(page.getByText('รหัสไม่ถูกต้อง')).toBeVisible();
+  await expect(page.getByText('รายได้วันนี้')).toHaveCount(0);
+
+  await page.getByLabel('รหัสเปิดแดชบอร์ด').fill(DASHBOARD_KEY);
+  await page.getByRole('button', { name: 'เปิดแดชบอร์ด' }).click();
 
   await expect(page.getByRole('heading', { name: 'ภาพรวม' })).toBeVisible();
   await expect(page.getByText('รายได้วันนี้')).toBeVisible();
+});
 
-  // And the way back out is on screen, not buried in browser storage.
-  await page.getByRole('button', { name: 'ออกจากโหมดพรีวิว' }).click();
-  await expect(page.getByRole('heading', { name: 'แดชบอร์ดร้าน' })).toBeVisible();
+/**
+ * Somebody handed the site link. They can sign in and shop like anyone else,
+ * and the shop's back office is not part of what they were given.
+ */
+test('a visitor with the link sees no way into the back office', async ({ page }) => {
+  await signIn(page, 'someone@example.com');
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  await page.locator('.account-chip').click();
+  await expect(page.getByRole('menuitem', { name: /แดชบอร์ด/ })).toHaveCount(0);
+  await expect(page.getByRole('menuitem', { name: /ดูแบบแอดมิน/ })).toHaveCount(0);
+
+  // And typing the address in reaches a locked door, not the dashboard.
+  await page.goto('/admin');
+  await page.waitForLoadState('networkidle');
+  await expect(page.getByLabel('รหัสเปิดแดชบอร์ด')).toBeVisible();
+  await expect(page.getByText('รายได้วันนี้')).toHaveCount(0);
 });
 
 /**
@@ -76,6 +98,7 @@ test('the shop can reach its own dashboard while the site is in preview', async 
  */
 test('the account menu switches between the customer and shop views', async ({ page }) => {
   await signIn(page, 'owner@imjai.test');
+  await unlockDashboard(page);
   await page.goto('/');
   await page.waitForLoadState('networkidle');
 

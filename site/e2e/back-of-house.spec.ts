@@ -1,4 +1,4 @@
-import { ADMIN_EMAIL, anOrder, expect, seedOrders, signIn, test } from './fixtures';
+import { ADMIN_EMAIL, anOrder, expect, seedOrders, signIn, test, unlockDashboard } from './fixtures';
 
 /**
  * The shop running itself.
@@ -12,6 +12,7 @@ import { ADMIN_EMAIL, anOrder, expect, seedOrders, signIn, test } from './fixtur
 
 test('the dashboard counts real orders rather than sample ones', async ({ page }) => {
   await signIn(page, ADMIN_EMAIL);
+  await unlockDashboard(page);
   await seedOrders(page, [anOrder(), anOrder({ orderNumber: 'IJ260821-TES2', idempotencyKey: 'e2e-2', status: 'preparing' })]);
 
   await page.goto('/admin');
@@ -25,6 +26,7 @@ test('the dashboard counts real orders rather than sample ones', async ({ page }
 
 test('a status the kitchen sets reaches the customer timeline', async ({ page }) => {
   await signIn(page, ADMIN_EMAIL);
+  await unlockDashboard(page);
   await seedOrders(page, [anOrder()]);
 
   await page.goto('/admin');
@@ -42,6 +44,7 @@ test('a status the kitchen sets reaches the customer timeline', async ({ page })
 
 test('confirming a slip changes what the customer is told', async ({ page }) => {
   await signIn(page, ADMIN_EMAIL);
+  await unlockDashboard(page);
   await seedOrders(page, [anOrder()]);
 
   await page.goto('/admin');
@@ -56,6 +59,7 @@ test('confirming a slip changes what the customer is told', async ({ page }) => 
 
 test('a dish marked sold out leaves the menu', async ({ page }) => {
   await signIn(page, ADMIN_EMAIL);
+  await unlockDashboard(page);
   await page.goto('/admin');
   await page.waitForLoadState('networkidle');
   await page.getByRole('button', { name: /เมนูและสต็อก/ }).click();
@@ -73,6 +77,7 @@ test('a dish marked sold out leaves the menu', async ({ page }) => {
 
 test('a price the shop changes is the price the customer pays', async ({ page }) => {
   await signIn(page, ADMIN_EMAIL);
+  await unlockDashboard(page);
   await page.goto('/admin');
   await page.waitForLoadState('networkidle');
   await page.getByRole('button', { name: /เมนูและสต็อก/ }).click();
