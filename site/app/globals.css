@@ -201,6 +201,11 @@ button { color: inherit; }
 .empty-cart h2, .checkout-empty h1 { margin: 0 0 10px; font-family: var(--font-display); }
 .empty-cart p, .checkout-empty p { color: #7d6b60; font-size: 13px; line-height: 1.7; }
 .empty-cart .primary-button, .checkout-empty .primary-button { margin-top: 10px; }
+/* Says a section is showing sample content. Quiet enough not to fight the
+   design, plain enough that nobody reads the cards below as real reviews. */
+.demo-badge { width: fit-content; margin: -22px auto 30px; padding: 6px 14px; border: 1px dashed var(--line); border-radius: 999px; background: var(--paper); color: #8a7a70; font-size: 11px; font-weight: 600; }
+
+
 /* --- Motion primitives ------------------------------------------------ *
    Four pieces shared across pages. Each is CSS only where CSS is enough,
    so the component files carry behaviour rather than styling. */

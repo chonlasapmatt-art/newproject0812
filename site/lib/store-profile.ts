@@ -99,6 +99,21 @@ export const CONTACT_CHANNELS: ContactChannel[] = [
   },
 ];
 
+/**
+ * Demo reviews.
+ *
+ * They exist so the section has its shape while the shop is being built — the
+ * layout, the star row, the card sizing all need something in them to be worth
+ * looking at. Nobody said these words. They are marked here, labelled on the
+ * page and listed below, because a testimonial nobody gave is the one kind of
+ * placeholder a visitor cannot tell apart from the real thing.
+ */
+export const DEMO_REVIEWS = [
+  { quote: 'กาแฟหอม อาหารทำสดจริง บรรยากาศอบอุ่นเหมือนมานั่งบ้านเพื่อนค่ะ', name: 'มิน', context: 'ลูกค้าประจำ' },
+  { quote: 'กะเพรารสกำลังดี ไข่ดาวขอบกรอบ แล้วระบบสั่งใช้ง่ายมาก', name: 'ต้น', context: 'สั่งเดลิเวอรี' },
+  { quote: 'ครัวซองต์อบใหม่คู่ลาเต้คือพอดีมาก พนักงานน่ารักทุกคน', name: 'แพรว', context: 'แวะช่วงเช้า' },
+] as const;
+
 /** Listed so the shop can see at a glance what still needs real values. */
 export const pendingRealData = [
   'ที่อยู่ร้านจริง',
@@ -106,6 +121,7 @@ export const pendingRealData = [
   'LINE Official Account ID จริง',
   'เวลาเปิด–ปิดจริง',
   'เรื่องราวร้านในแบบที่เจ้าของอยากเล่า',
+  'รีวิวลูกค้าจริง (ตอนนี้เป็นตัวอย่างสำหรับดูหน้าตา)',
 ] as const;
 
 /**

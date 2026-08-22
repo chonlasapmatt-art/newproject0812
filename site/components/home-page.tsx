@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { ArrowDownRight, ArrowRight, Clock3, Heart, MapPin, PackageCheck, Quote, ShieldCheck, Sparkles, Star, UtensilsCrossed } from 'lucide-react';
 import { STORE } from '../lib/catalog';
+import { DEMO_REVIEWS } from '../lib/store-profile';
 import { useMenu } from '../lib/menu-admin';
 import { Divider, RevealLines } from './reveal-text';
 import { Magnetic } from './magnetic';
@@ -114,8 +115,18 @@ export function HomePage() {
 
       <section className="reviews-section page-section">
         <p className="eyebrow">WORDS FROM OUR GUESTS</p><RevealLines as="h2" lines={['ความอิ่มใจจากโต๊ะข้าง ๆ']} />
+        {/* The badge is the whole point of keeping these: the section can show
+            its shape without anyone reading invented praise as real. */}
+        <p className="demo-badge">ตัวอย่างการแสดงผล · จะเปลี่ยนเป็นรีวิวจริงเมื่อเปิดร้าน</p>
         <div className="review-grid">
-          {[['กาแฟหอม อาหารทำสดจริง บรรยากาศอบอุ่นเหมือนมานั่งบ้านเพื่อนค่ะ','มิน · ลูกค้าประจำ'],['กะเพรารสกำลังดี ไข่ดาวขอบกรอบ แล้วระบบสั่งใช้ง่ายมาก','ต้น · สั่งเดลิเวอรี'],['ครัวซองต์อบใหม่คู่ลาเต้คือพอดีมาก พนักงานน่ารักทุกคน','แพรว · แวะช่วงเช้า']].map(([quote, name]) => <article key={name}><Quote /><div className="stars">★★★★★</div><p>{quote}</p><b>{name}</b></article>)}
+          {DEMO_REVIEWS.map((review) => (
+            <article key={review.name}>
+              <Quote />
+              <div className="stars" aria-hidden>★★★★★</div>
+              <p>{review.quote}</p>
+              <b>{review.name} · {review.context}</b>
+            </article>
+          ))}
         </div>
       </section>
 
