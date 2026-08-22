@@ -120,6 +120,14 @@ function readStored(): Session {
     if (!raw) return SIGNED_OUT;
     const user = JSON.parse(raw) as SessionUser;
     if (!user?.email) return SIGNED_OUT;
+    // A session made in preview mode must not survive into a build that has
+    // Supabase. Nothing ever authenticated it, Supabase is about to contradict
+    // it, and until that answer arrives the site would show a signed-in header
+    // — and a "preview" badge — to somebody who is actually signed out.
+    if (isSupabaseConfigured && !user.verified) {
+      persist(null);
+      return SIGNED_OUT;
+    }
     return { status: 'signed-in', user, role: roleFor(user.email) };
   } catch {
     return SIGNED_OUT;
@@ -146,7 +154,11 @@ function subscribe(onChange: () => void) {
     if (isSupabaseConfigured && supabase) {
       // Supabase is the authority when it is configured: whatever it reports
       // replaces the locally remembered session, including signing us out.
-      supabase.auth.getUser().then(({ data }) => applyAccount(data.user));
+      // A rejection here must sign out too. Without the catch, a network
+      // failure leaves whatever was in storage standing as the session.
+      supabase.auth.getUser()
+        .then(({ data }) => applyAccount(data.user))
+        .catch(() => applyAccount(null));
       supabase.auth.onAuthStateChange((_event, next) => applyAccount(next?.user ?? null));
     }
   }
