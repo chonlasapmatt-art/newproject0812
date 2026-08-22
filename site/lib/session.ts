@@ -35,6 +35,9 @@ export type Session = {
   role: Role;
 };
 
+/** True when no Supabase project is wired up yet. */
+export const isPreviewMode = !isSupabaseConfigured;
+
 const STORAGE_KEY = 'imjai-session';
 
 const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? '')
@@ -42,10 +45,39 @@ const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? '')
   .map((entry) => entry.trim().toLowerCase())
   .filter(Boolean);
 
+/** True when nobody has been named as staff for this build. */
+export const isAdminListConfigured = ADMIN_EMAILS.length > 0;
+
+/**
+ * Preview access to the dashboard.
+ *
+ * Without Supabase there is no database, so every order and menu edit lives in
+ * the browser that made it: the dashboard on a deployed preview shows the
+ * viewer their own data and nobody else's. There is nothing to protect yet,
+ * and no real authentication to protect it with — the email list is a build
+ * setting, not a login.
+ *
+ * So while the site is in preview, the shop can let itself in with a click and
+ * the lock screen says exactly what that means. The moment Supabase is
+ * configured this stops working, because then there is real data behind the
+ * door and row-level security is what decides who opens it.
+ */
+const PREVIEW_ADMIN_KEY = 'imjai-preview-admin';
+
+function hasPreviewAdmin(): boolean {
+  if (!isPreviewMode) return false;
+  try {
+    return localStorage.getItem(PREVIEW_ADMIN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 /** Case and stray spaces should never decide whether someone is staff. */
 export function roleFor(email: string | null | undefined): Role {
   if (!email) return 'guest';
-  return ADMIN_EMAILS.includes(email.trim().toLowerCase()) ? 'admin' : 'customer';
+  if (ADMIN_EMAILS.includes(email.trim().toLowerCase())) return 'admin';
+  return hasPreviewAdmin() ? 'admin' : 'customer';
 }
 
 const SIGNED_OUT: Session = { status: 'signed-out', user: null, role: 'guest' };
@@ -159,6 +191,25 @@ export function useCan() {
   };
 }
 
+/**
+ * Turn preview access on or off.
+ *
+ * Refused outright when Supabase is configured: at that point the dashboard
+ * shows the shop's real orders and a switch in the browser must not be able
+ * to open it.
+ */
+export function setPreviewAdmin(on: boolean) {
+  if (!isPreviewMode) return;
+  try {
+    if (on) localStorage.setItem(PREVIEW_ADMIN_KEY, '1');
+    else localStorage.removeItem(PREVIEW_ADMIN_KEY);
+  } catch {
+    return;
+  }
+  const user = current.user;
+  if (user) setSession({ status: 'signed-in', user, role: roleFor(user.email) });
+}
+
 export function useSignOut() {
   return useCallback(async () => {
     if (isSupabaseConfigured && supabase) await supabase.auth.signOut();
@@ -187,5 +238,3 @@ export function previewSignIn(email: string, name?: string): Session {
   return next;
 }
 
-/** True when no Supabase project is wired up yet. */
-export const isPreviewMode = !isSupabaseConfigured;

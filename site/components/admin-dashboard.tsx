@@ -35,7 +35,7 @@ import {
   type OrderStatus,
   type StoredOrder,
 } from '../lib/orders';
-import { useSession } from '../lib/session';
+import { isAdminListConfigured, isPreviewMode, setPreviewAdmin, useSession } from '../lib/session';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { STORE_PROFILE, pendingRealData } from '../lib/store-profile';
 import { ImJaiMark } from './brand-logo';
@@ -492,6 +492,36 @@ export function AdminDashboard() {
   }
 
   if (role !== 'admin') {
+    /**
+     * Two different situations, and the old screen showed the same wall for
+     * both — which is why the shop could not tell whether it had been refused
+     * or had simply never been set up. It said "ask your administrator" to the
+     * person who is the administrator.
+     */
+    if (isPreviewMode) {
+      return (
+        <main className="admin-lock">
+          <span><LockKeyhole /></span>
+          <h1>แดชบอร์ดร้าน</h1>
+          <p>
+            ตอนนี้เว็บยังไม่ได้เชื่อมฐานข้อมูล ออเดอร์และการแก้เมนูทั้งหมดจึงถูกเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น
+            — แดชบอร์ดจะแสดงเฉพาะข้อมูลของเครื่องคุณเอง ไม่มีข้อมูลของคนอื่นให้เห็น
+          </p>
+          {status === 'signed-in' ? (
+            <button type="button" className="primary-button" onClick={() => setPreviewAdmin(true)}>
+              เปิดแดชบอร์ดในโหมดพรีวิว
+            </button>
+          ) : (
+            <Link prefetch={false} className="primary-button" href="/account?next=/admin">เข้าสู่ระบบก่อน</Link>
+          )}
+          <small>
+            <ShieldAlert /> เมื่อเชื่อม Supabase แล้ว ปุ่มนี้จะใช้ไม่ได้อีก
+            {isAdminListConfigured ? ' และสิทธิ์จะตรวจจากรายชื่อแอดมินที่ตั้งไว้' : ' และต้องตั้งรายชื่อแอดมินก่อน'}
+          </small>
+        </main>
+      );
+    }
+
     return (
       <main className="admin-lock">
         <span><LockKeyhole /></span>
@@ -543,6 +573,7 @@ export function AdminDashboard() {
         {!isSupabaseConfigured && (
           <p className="admin-banner">
             <Package size={15} /> โหมดพรีวิว — ออเดอร์และการแก้เมนูถูกเก็บในเบราว์เซอร์เครื่องนี้ ยังไม่ได้ซิงก์ข้ามอุปกรณ์
+            <button type="button" className="admin-banner-exit" onClick={() => setPreviewAdmin(false)}>ออกจากโหมดพรีวิว</button>
           </p>
         )}
 

@@ -40,6 +40,55 @@ test('a guest who taps add is sent to sign in and keeps the dish', async ({ page
 test('an anonymous visitor cannot view admin data', async ({ page }) => {
   await page.goto('/admin');
 
-  await expect(page.getByRole('heading', { name: 'สำหรับทีมงานอิ่มใจ' })).toBeVisible();
+  // Held at the door, and told to sign in rather than shown a way past it.
   await expect(page.getByText('รายได้วันนี้')).toHaveCount(0);
+  await expect(page.locator('.admin-page')).toHaveCount(0);
+  // Scoped to the lock screen: the header carries a sign-in link on every page.
+  await expect(page.locator('.admin-lock').getByRole('link', { name: /เข้าสู่ระบบ/ })).toBeVisible();
+});
+
+/**
+ * While no database is connected the dashboard shows the viewer their own
+ * browser's orders and nobody else's, so the shop can let itself in. The point
+ * of this case is the wording: the old screen told the owner to contact their
+ * administrator, which is the owner.
+ */
+test('the shop can reach its own dashboard while the site is in preview', async ({ page }) => {
+  await signIn(page, 'owner@imjai.test');
+  await page.goto('/admin');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.getByRole('heading', { name: 'แดชบอร์ดร้าน' })).toBeVisible();
+  await page.getByRole('button', { name: /เปิดแดชบอร์ดในโหมดพรีวิว/ }).click();
+
+  await expect(page.getByRole('heading', { name: 'ภาพรวม' })).toBeVisible();
+  await expect(page.getByText('รายได้วันนี้')).toBeVisible();
+
+  // And the way back out is on screen, not buried in browser storage.
+  await page.getByRole('button', { name: 'ออกจากโหมดพรีวิว' }).click();
+  await expect(page.getByRole('heading', { name: 'แดชบอร์ดร้าน' })).toBeVisible();
+});
+
+/**
+ * The shop has to walk both sides of its own site — order as a customer, then
+ * read the order off the dashboard — so switching between the two is one tap
+ * rather than a sign-out and a second address.
+ */
+test('the account menu switches between the customer and shop views', async ({ page }) => {
+  await signIn(page, 'owner@imjai.test');
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  const openMenu = () => page.locator('.account-chip').click();
+
+  await openMenu();
+  await expect(page.getByRole('link', { name: /แดชบอร์ดร้าน/ })).toHaveCount(0);
+  await page.getByRole('menuitem', { name: /ดูแบบแอดมินร้าน/ }).click();
+
+  await openMenu();
+  await expect(page.getByRole('menuitem', { name: /แดชบอร์ดร้าน/ })).toBeVisible();
+  await page.getByRole('menuitem', { name: /ดูแบบลูกค้าทั่วไป/ }).click();
+
+  await openMenu();
+  await expect(page.getByRole('menuitem', { name: /แดชบอร์ดร้าน/ })).toHaveCount(0);
 });

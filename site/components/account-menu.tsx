@@ -1,11 +1,11 @@
 'use client';
 
 import { AnimatePresence, motion } from 'motion/react';
-import { CircleUserRound, LayoutDashboard, LogOut, Package, UserRound } from 'lucide-react';
+import { CircleUserRound, LayoutDashboard, LogOut, Package, Repeat2, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { EASE, useMotionOK } from '../lib/motion';
-import { useSession, useSignOut } from '../lib/session';
+import { isPreviewMode, setPreviewAdmin, useSession, useSignOut } from '../lib/session';
 
 /**
  * The account control in the header.
@@ -90,6 +90,29 @@ export function AccountMenu() {
               <Link prefetch={false} role="menuitem" href="/admin" onClick={() => setOpen(false)}>
                 <LayoutDashboard size={16} /> แดชบอร์ดร้าน
               </Link>
+            )}
+
+            {/*
+              While the site is in preview there is no real login behind these
+              roles, and the shop needs to walk both sides of its own website —
+              placing an order as a customer, then reading it off the dashboard.
+              Making that a switch beats signing out and back in with a second
+              address. It disappears the moment Supabase is configured, because
+              then the role comes from the database and this would be a way to
+              grant yourself one.
+            */}
+            {isPreviewMode && (
+              <button
+                type="button"
+                role="menuitem"
+                className="account-switch"
+                onClick={() => {
+                  setPreviewAdmin(role !== 'admin');
+                  setOpen(false);
+                }}
+              >
+                <Repeat2 size={16} /> {role === 'admin' ? 'ดูแบบลูกค้าทั่วไป' : 'ดูแบบแอดมินร้าน'}
+              </button>
             )}
 
             <button
