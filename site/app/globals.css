@@ -49,7 +49,9 @@ a:focus-visible, button:focus-visible { outline: 3px solid #f2a56c; outline-offs
 .hero-copy { display: flex; flex-direction: column; justify-content: center; padding: 130px 5vw 70px max(5vw, calc((100vw - 1380px)/2 + 5vw)); }
 .eyebrow { margin: 0 0 22px; color: var(--orange); font-size: 11px; font-weight: 800; letter-spacing: .22em; }
 .hero h1 { margin: 0; max-width: 620px; font-family: var(--font-display); font-size: clamp(60px, 7vw, 106px); font-weight: 500; line-height: .94; letter-spacing: -.055em; }
-.hero h1 span { color: var(--orange); font-style: italic; }
+/* The accent word is an <em> so the reveal wrapper's own spans, which sit
+   between the heading and the text, cannot inherit the accent colour. */
+.hero h1 em { color: var(--orange); font-style: italic; }
 .hero-lede { margin: 32px 0 28px; color: #6e5d53; font-size: 18px; line-height: 1.75; }
 .hero-actions { display: flex; align-items: center; gap: 28px; }
 .primary-button { min-height: 54px; padding: 0 28px; background: var(--orange); }
@@ -199,6 +201,85 @@ button { color: inherit; }
 .empty-cart h2, .checkout-empty h1 { margin: 0 0 10px; font-family: var(--font-display); }
 .empty-cart p, .checkout-empty p { color: #7d6b60; font-size: 13px; line-height: 1.7; }
 .empty-cart .primary-button, .checkout-empty .primary-button { margin-top: 10px; }
+/* --- Motion primitives ------------------------------------------------ *
+   Four pieces shared across pages. Each is CSS only where CSS is enough,
+   so the component files carry behaviour rather than styling. */
+
+/* A headline line, masked so its text can start below the box.
+
+   The padding and the matching negative margin are the Thai fix: without the
+   extra room the mask crops ไม้โท off the top and สระอุ off the bottom of a
+   tightly-led display face. Pulling the padding back out with margin keeps
+   the heading's metrics exactly where they were. */
+.reveal-line { display: block; overflow: hidden; padding: .16em 0 .1em; margin: -.16em 0 -.1em; }
+.reveal-line > span { display: inline-block; will-change: transform; }
+
+/* A rule that arrives with the section it separates. */
+.section-divider { width: min(78%, 620px); height: 1px; margin: 8px auto; background: linear-gradient(90deg, transparent, var(--orange), transparent); transform-origin: center; }
+
+/* Hero depth: three planes over the same box, moved at three speeds. */
+.parallax-plane { position: absolute; inset: 0; pointer-events: none; will-change: transform; }
+
+/* The standing-facts strip.
+
+   The track holds the list twice and travels exactly half its own width, so
+   the second copy lands where the first began and the seam never shows. */
+.marquee-strip { overflow: hidden; padding: 18px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--cream); }
+.marquee-track { display: flex; width: max-content; }
+.marquee-track.is-running { animation: marquee 34s linear infinite; }
+.marquee-strip:hover .marquee-track.is-running { animation-play-state: paused; }
+.marquee-run { display: flex; align-items: center; gap: 42px; padding-right: 42px; }
+.marquee-item { display: flex; align-items: center; gap: 13px; white-space: nowrap; color: #7d6c61; font-size: 13px; font-weight: 600; letter-spacing: .01em; }
+.marquee-dot { width: 5px; height: 5px; flex: 0 0 auto; border-radius: 50%; background: var(--orange); }
+@keyframes marquee { to { transform: translateX(-50%); } }
+
+/* The way back up from a long page. */
+.back-to-top { position: fixed; right: 24px; bottom: 88px; z-index: 38; width: 46px; height: 46px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--coffee); color: white; cursor: pointer; box-shadow: 0 10px 30px rgba(108,63,43,.32); transition: background .2s ease, transform .2s ease; }
+.back-to-top:hover { background: var(--orange); transform: translateY(-2px); }
+
+/* The basket count, popping when it changes so the change is noticed. */
+@keyframes cart-count-pop { 0% { transform: scale(.6); } 55% { transform: scale(1.28); } 100% { transform: scale(1); } }
+.cart-button b { animation: cart-count-pop .42s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* A form card that refuses: a short shake, no colour change of its own —
+   the field messages already say what is wrong. */
+@keyframes form-refuse { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+.form-card.is-refused { animation: form-refuse .42s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Everything above is decoration; none of it should travel. */
+  .marquee-track.is-running { animation: none; }
+  .cart-button b, .form-card.is-refused { animation: none; }
+  .back-to-top:hover { transform: none; }
+}
+
+
+/* The tracking timeline draws itself.
+
+   Each connector grows from its own step downward, one after the next, so the
+   line reads as progress travelling down the list. The current step keeps a
+   slow ring so the eye lands on where the order actually is. */
+.timeline li::before { transform: scaleY(0); transform-origin: top; animation: timeline-run .45s var(--ease-enter, cubic-bezier(.16,1,.3,1)) forwards; animation-delay: calc(var(--i, 0) * .1s + .1s); }
+@keyframes timeline-run { to { transform: scaleY(1); } }
+.timeline li.done::before { background: #c8b8a6; }
+.timeline li.now > span { position: relative; }
+.timeline li.now > span::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--orange); opacity: 0; animation: timeline-pulse 2.4s ease-out infinite; }
+@keyframes timeline-pulse { 0% { transform: scale(.8); opacity: .55; } 70%, 100% { transform: scale(1.35); opacity: 0; } }
+
+/* The copyable payment figure. Placed beside the amount rather than under it,
+   so the two read as one control: the number and the way to take it. */
+.ppay-amount-row { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.ppay-copy { min-height: 32px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; background: white; color: #6f5f56; font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: border-color .2s ease, background .2s ease, color .2s ease; }
+.ppay-copy:hover { border-color: var(--coffee); }
+.ppay-copy.ok { border-color: #8ba97e; background: #f1f7ee; color: #446038; }
+.ppay-copy.no { border-color: #d9a99c; background: #fcf1ee; color: #a04533; }
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline li::before { animation: none; transform: scaleY(1); }
+  .timeline li.now > span::after { animation: none; opacity: .4; transform: scale(1); }
+}
+
+
 /* --- น้องอิ่มใจ ------------------------------------------------------ *
    The panel is a conversation, so it is sized for reading: 13px bubbles with
    generous line-height rather than the 10px chrome the rest of the widgets
@@ -598,7 +679,7 @@ button { color: inherit; }
 }
 
 @media (max-width: 560px) {
-  .assistant-fab { right: 14px; bottom: 14px; width: 52px; padding: 0; justify-content: center; }.assistant-fab span { display: none; }.assistant-panel { right: 0; left: 0; bottom: 0; width: 100%; height: min(86vh, 640px); border-radius: 22px 22px 0 0; border-bottom: 0; }.chat-bubble { max-width: 92%; }
+  .back-to-top { right: 14px; bottom: 76px; width: 42px; height: 42px; }.assistant-fab { right: 14px; bottom: 14px; width: 52px; padding: 0; justify-content: center; }.assistant-fab span { display: none; }.assistant-panel { right: 0; left: 0; bottom: 0; width: 100%; height: min(86vh, 640px); border-radius: 22px 22px 0 0; border-bottom: 0; }.chat-bubble { max-width: 92%; }
   .page-section { padding: 75px 20px; }.featured-grid,.category-grid,.catalog-grid { grid-template-columns: 1fr; }.section-heading { gap: 15px; }.category-grid a { min-height: 112px; }.promotion-art { min-height: 330px; }.promotion-art span { font-size: 88px; }.story-circle { font-size: 135px; }.review-grid article { min-height: 210px; }
   .menu-toolbar { flex-direction: column; }.sort-box { width: 100%; }.category-tabs { justify-content: start; padding: 0 16px; }.catalog-section { padding: 26px 16px 90px; }.catalog-heading span { display: none; }.catalog-art { aspect-ratio: 1.35; }.product-modal { max-height: calc(100vh - 16px); width: calc(100vw - 16px); }.product-modal-art { min-height: 210px; }.modal-order-bar { grid-template-columns: 1fr; }.modal-order-bar .quantity-stepper { justify-self: center; }
   .checkout-page { padding: 35px 15px 90px; }.field-grid,.choice-grid,.payment-options { grid-template-columns: 1fr; }.promptpay-panel { grid-template-columns: 1fr; }.qr-placeholder { max-width: 150px; }.form-card,.order-summary { padding: 18px; }

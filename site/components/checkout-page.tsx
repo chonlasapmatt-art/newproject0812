@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, ChevronLeft, MapPin, QrCode, ShieldCheck, Store, Truck } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useMemo, useState, useSyncExternalStore, type AnimationEvent } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { cartTotals, lineTotal } from '../lib/cart';
@@ -62,7 +62,7 @@ export function CheckoutPage() {
     const reference = slipReference(payload);
     setSlipScan(reference ? { state: 'read', reference } : { state: 'unreadable' });
   };
-  const { register, handleSubmit, control, formState: { errors } } = useForm<CheckoutValues>({ resolver: zodResolver(schema), defaultValues: { fulfilment: 'pickup', payment: 'cash', coupon } });
+  const { register, handleSubmit, control, setFocus, formState: { errors } } = useForm<CheckoutValues>({ resolver: zodResolver(schema), defaultValues: { fulfilment: 'pickup', payment: 'cash', coupon } });
   const fulfilment = useWatch({ control, name: 'fulfilment' });
   const payment = useWatch({ control, name: 'payment' });
   const watchedCoupon = useWatch({ control, name: 'coupon' }) ?? '';
@@ -85,6 +85,33 @@ export function CheckoutPage() {
       return null; // PromptPay id missing or malformed — fall back to the notice below
     }
   }, [orderRef, payment, totals.total, promptPayId]);
+
+  /**
+   * Which card holds each field, so a rejected submit can point at it.
+   *
+   * The four sections scroll past a phone screen one at a time, and an error
+   * message two sections above the button is one nobody sees. The card shakes
+   * to say where the problem is and the field takes focus, which scrolls it
+   * into view and puts the caret where the fix goes.
+   */
+  const CARD_OF: Record<string, number> = { name: 1, phone: 1, address: 2, payment: 3 };
+  const [refusedCard, setRefusedCard] = useState<number | null>(null);
+
+  const onInvalid = (issues: Record<string, unknown>) => {
+    const firstField = Object.keys(issues)[0];
+    setRefusedCard(CARD_OF[firstField] ?? 1);
+    if (firstField in CARD_OF) setFocus(firstField as keyof CheckoutValues);
+  };
+
+  // The shake clears itself when it ends rather than on a timer, so the CSS
+  // owns the duration and there is no second copy of it here to drift.
+  // Only the card's own animation counts; children animate too and bubble.
+  const cardProps = (index: number) => ({
+    className: `form-card${refusedCard === index ? ' is-refused' : ''}`,
+    onAnimationEnd: (event: AnimationEvent<HTMLElement>) => {
+      if (event.target === event.currentTarget) setRefusedCard(null);
+    },
+  });
 
   const onSubmit = async (values: CheckoutValues) => {
     if (!lines.length || totals.subtotal < STORE.minimumOrder) return;
@@ -132,12 +159,12 @@ export function CheckoutPage() {
 
   if (!lines.length) return <main className="checkout-empty"><span>🧺</span><h1>ตะกร้ายังว่างอยู่</h1><p>เลือกเมนูที่อยากทานก่อน แล้วค่อยกลับมายืนยันออเดอร์นะคะ</p><Link prefetch={false} className="primary-button" href="/menu">กลับไปเลือกเมนู</Link></main>;
   return <main className="checkout-page"><div className="checkout-heading"><Link prefetch={false} href="/menu"><ChevronLeft /> กลับไปเลือกเมนู</Link><p className="eyebrow">SECURE CHECKOUT</p><h1>ยืนยันความอร่อย</h1><p>ตรวจรายการและเลือกวิธีรับอาหารก่อนส่งออเดอร์</p></div>
-    <form onSubmit={handleSubmit(onSubmit)} className="checkout-layout">
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="checkout-layout">
       <div className="checkout-form-stack">
-        <section className="form-card"><div className="form-card-title"><span>1</span><div><h2>ข้อมูลผู้สั่ง</h2><p>ใช้สำหรับติดต่อเรื่องออเดอร์นี้เท่านั้น</p></div></div><div className="field-grid"><label>ชื่อผู้สั่ง<input {...register('name')} autoComplete="name" placeholder="ชื่อ–นามสกุล" />{errors.name && <small>{errors.name.message}</small>}</label><label>เบอร์โทร<input {...register('phone')} inputMode="tel" autoComplete="tel" placeholder="08X-XXX-XXXX" />{errors.phone && <small>{errors.phone.message}</small>}</label></div></section>
-        <section className="form-card"><div className="form-card-title"><span>2</span><div><h2>เลือกรับอาหาร</h2><p>รับที่ร้านได้เร็วที่สุด หรือให้เราไปส่ง</p></div></div><div className="choice-grid"><label className={fulfilment === 'pickup' ? 'selected' : ''}><input type="radio" value="pickup" {...register('fulfilment')} /><Store /><b>รับที่ร้าน</b><small>พร้อมรับประมาณ 20–30 นาที</small></label><label className={fulfilment === 'delivery' ? 'selected' : ''}><input type="radio" value="delivery" {...register('fulfilment')} /><Truck /><b>จัดส่ง</b><small>ประมาณ 30–45 นาที</small></label></div>{fulfilment === 'delivery' && <label className="full-field"><span><MapPin size={16} /> ที่อยู่จัดส่ง</span><textarea {...register('address')} rows={3} placeholder="บ้านเลขที่ อาคาร ชั้น ถนน แขวง เขต และจุดสังเกต" />{errors.address && <small>{errors.address.message}</small>}</label>}</section>
-        <section className="form-card"><div className="form-card-title"><span>3</span><div><h2>วิธีชำระเงิน</h2><p>ร้านจะยืนยันการชำระเงินหลังตรวจสอบแล้ว</p></div></div><div className="payment-options"><label className={payment === 'cash' ? 'selected' : ''}><input type="radio" value="cash" {...register('payment')} /><span>💵</span><div><b>เงินสดตอนรับอาหาร</b><small>ชำระเมื่อรับที่ร้านหรือปลายทาง</small></div></label><label className={payment === 'promptpay' ? 'selected' : ''}><input type="radio" value="promptpay" {...register('payment')} /><QrCode /><div><b>พร้อมเพย์ QR</b><small>อัปโหลดสลิปเพื่อรอตรวจสอบ</small></div></label></div>{payment === 'promptpay' && <div className="promptpay-panel">{charge ? <PromptPayCard payload={charge.payload} amountDisplay={charge.display} accountName={promptPayName} orderNumber={orderRef?.orderNumber} /> : <div className="qr-placeholder"><QrCode /><span>QR ร้านค้า</span><small>{promptPayId ? 'กำลังเตรียม…' : 'ยังไม่ได้ตั้งค่า PROMPTPAY_ID'}</small></div>}<div><b>สแกน QR แล้วอัปโหลดสลิปเพื่อยืนยันอัตโนมัติ</b><p>ยอดชำระ {charge ? `฿${charge.display}` : `฿${totals.total}`}</p><label className="slip-upload">อัปโหลดสลิป (JPG, PNG หรือ WebP ไม่เกิน 5MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void onSlipChange(event.target.files?.[0] ?? null); }} /></label>{slip && <small className="valid-file"><CheckCircle2 /> {slip.name}</small>}{slipScan?.state === 'scanning' && <small className="slip-status">กำลังอ่าน QR บนสลิป…</small>}{slipScan?.state === 'read' && <small className="slip-status ok">อ่าน QR บนสลิปได้แล้ว ระบบจะตรวจยอดกับธนาคารอัตโนมัติ</small>}{slipScan?.state === 'unreadable' && <small className="slip-status warn">อ่าน QR บนสลิปไม่ได้ พนักงานจะตรวจสอบให้ภายหลัง</small>}</div></div>}</section>
-        <section className="form-card"><div className="form-card-title"><span>4</span><div><h2>หมายเหตุ</h2><p>รายละเอียดเพิ่มเติมสำหรับร้านหรือคนส่ง</p></div></div><label className="full-field"><textarea {...register('note')} rows={3} placeholder="เช่น โทรก่อนถึง ฝากไว้ที่ล็อบบี้" /></label></section>
+        <section {...cardProps(1)}><div className="form-card-title"><span>1</span><div><h2>ข้อมูลผู้สั่ง</h2><p>ใช้สำหรับติดต่อเรื่องออเดอร์นี้เท่านั้น</p></div></div><div className="field-grid"><label>ชื่อผู้สั่ง<input {...register('name')} autoComplete="name" placeholder="ชื่อ–นามสกุล" />{errors.name && <small>{errors.name.message}</small>}</label><label>เบอร์โทร<input {...register('phone')} inputMode="tel" autoComplete="tel" placeholder="08X-XXX-XXXX" />{errors.phone && <small>{errors.phone.message}</small>}</label></div></section>
+        <section {...cardProps(2)}><div className="form-card-title"><span>2</span><div><h2>เลือกรับอาหาร</h2><p>รับที่ร้านได้เร็วที่สุด หรือให้เราไปส่ง</p></div></div><div className="choice-grid"><label className={fulfilment === 'pickup' ? 'selected' : ''}><input type="radio" value="pickup" {...register('fulfilment')} /><Store /><b>รับที่ร้าน</b><small>พร้อมรับประมาณ 20–30 นาที</small></label><label className={fulfilment === 'delivery' ? 'selected' : ''}><input type="radio" value="delivery" {...register('fulfilment')} /><Truck /><b>จัดส่ง</b><small>ประมาณ 30–45 นาที</small></label></div>{fulfilment === 'delivery' && <label className="full-field"><span><MapPin size={16} /> ที่อยู่จัดส่ง</span><textarea {...register('address')} rows={3} placeholder="บ้านเลขที่ อาคาร ชั้น ถนน แขวง เขต และจุดสังเกต" />{errors.address && <small>{errors.address.message}</small>}</label>}</section>
+        <section {...cardProps(3)}><div className="form-card-title"><span>3</span><div><h2>วิธีชำระเงิน</h2><p>ร้านจะยืนยันการชำระเงินหลังตรวจสอบแล้ว</p></div></div><div className="payment-options"><label className={payment === 'cash' ? 'selected' : ''}><input type="radio" value="cash" {...register('payment')} /><span>💵</span><div><b>เงินสดตอนรับอาหาร</b><small>ชำระเมื่อรับที่ร้านหรือปลายทาง</small></div></label><label className={payment === 'promptpay' ? 'selected' : ''}><input type="radio" value="promptpay" {...register('payment')} /><QrCode /><div><b>พร้อมเพย์ QR</b><small>อัปโหลดสลิปเพื่อรอตรวจสอบ</small></div></label></div>{payment === 'promptpay' && <div className="promptpay-panel">{charge ? <PromptPayCard payload={charge.payload} amountDisplay={charge.display} accountName={promptPayName} orderNumber={orderRef?.orderNumber} /> : <div className="qr-placeholder"><QrCode /><span>QR ร้านค้า</span><small>{promptPayId ? 'กำลังเตรียม…' : 'ยังไม่ได้ตั้งค่า PROMPTPAY_ID'}</small></div>}<div><b>สแกน QR แล้วอัปโหลดสลิปเพื่อยืนยันอัตโนมัติ</b><p>ยอดชำระ {charge ? `฿${charge.display}` : `฿${totals.total}`}</p><label className="slip-upload">อัปโหลดสลิป (JPG, PNG หรือ WebP ไม่เกิน 5MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void onSlipChange(event.target.files?.[0] ?? null); }} /></label>{slip && <small className="valid-file"><CheckCircle2 /> {slip.name}</small>}{slipScan?.state === 'scanning' && <small className="slip-status">กำลังอ่าน QR บนสลิป…</small>}{slipScan?.state === 'read' && <small className="slip-status ok">อ่าน QR บนสลิปได้แล้ว ระบบจะตรวจยอดกับธนาคารอัตโนมัติ</small>}{slipScan?.state === 'unreadable' && <small className="slip-status warn">อ่าน QR บนสลิปไม่ได้ พนักงานจะตรวจสอบให้ภายหลัง</small>}</div></div>}</section>
+        <section {...cardProps(4)}><div className="form-card-title"><span>4</span><div><h2>หมายเหตุ</h2><p>รายละเอียดเพิ่มเติมสำหรับร้านหรือคนส่ง</p></div></div><label className="full-field"><textarea {...register('note')} rows={3} placeholder="เช่น โทรก่อนถึง ฝากไว้ที่ล็อบบี้" /></label></section>
       </div>
       <aside className="order-summary"><h2>สรุปออเดอร์</h2><div className="summary-lines">{lines.map((line) => <div key={line.id}><span className="summary-emoji">{line.emoji}</span><div><b>{line.name}</b><small>{line.quantity} × ฿{line.unitPrice}{line.options?.length ? ` · ${line.options.join(', ')}` : ''}</small></div><strong>฿{lineTotal(line)}</strong></div>)}</div><label className="summary-coupon">คูปอง<input {...register('coupon')} placeholder="IMJAI15" /></label><dl><div><dt>ยอดสินค้า</dt><dd>฿{totals.subtotal}</dd></div><div><dt>ส่วนลด</dt><dd>-฿{totals.discount}</dd></div><div><dt>ค่าจัดส่ง</dt><dd>{totals.deliveryFee ? `฿${totals.deliveryFee}` : 'ฟรี'}</dd></div><div className="summary-total"><dt>ยอดรวมสุทธิ</dt><dd>฿{totals.total}</dd></div></dl>{totals.subtotal < STORE.minimumOrder && <p className="order-warning">ยอดสั่งซื้อขั้นต่ำ ฿{STORE.minimumOrder} กรุณาเพิ่มอีก ฿{STORE.minimumOrder - totals.subtotal}</p>}{payment === 'promptpay' && !slip && <p className="order-warning">กรุณาอัปโหลดสลิปก่อนส่งออเดอร์</p>}{!canOrder && <Link prefetch={false} className="signin-gate" href="/account"><b>เข้าสู่ระบบก่อนสั่งซื้อ</b><small>ใช้เวลาไม่ถึงนาที แล้วคุณจะติดตามออเดอร์และดูประวัติย้อนหลังได้</small></Link>}<button className="place-order" disabled={!canOrder || submitting || totals.subtotal < STORE.minimumOrder || (payment === 'promptpay' && !slip)}>{submitting ? 'กำลังส่งออเดอร์…' : canOrder ? `ยืนยันออเดอร์ · ฿${totals.total}` : 'เข้าสู่ระบบเพื่อสั่งซื้อ'}</button><p className="secure-note"><ShieldCheck /> ราคาและสิทธิ์ส่วนลดจะตรวจซ้ำที่ระบบร้าน การชำระเงินจะแสดง “รอตรวจสอบ” จนกว่าพนักงานยืนยัน</p></aside>
     </form>

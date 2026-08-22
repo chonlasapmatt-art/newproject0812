@@ -3,7 +3,7 @@
 import { Ban, Check, ChefHat, Clock3, PackageCheck, Search, Truck } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { SHOP_PHONE } from '../lib/store-profile';
 import {
   flowFor,
@@ -71,8 +71,11 @@ function Timeline({ order }: { order: StoredOrder }) {
       {flow.map((step, index) => {
         const copy = STEP_COPY[step];
         const Icon = copy.icon;
+        const state = [index <= currentIndex ? 'done' : '', index === currentIndex ? 'now' : ''].filter(Boolean).join(' ');
         return (
-          <li className={index <= currentIndex ? 'done' : ''} key={step}>
+          // --i staggers the connector so the line appears to run down the
+          // list rather than all of it switching on at once.
+          <li className={state} key={step} style={{ '--i': index } as CSSProperties}>
             <span><Icon /></span>
             <div><b>{copy.label}</b><small>{copy.note}</small></div>
             {index === currentIndex && <em>สถานะปัจจุบัน</em>}

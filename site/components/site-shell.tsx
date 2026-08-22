@@ -9,6 +9,7 @@ import { useCan } from '../lib/session';
 import { SHOP_LINE, SHOP_LINE_URL, SHOP_PHONE, STORE_PROFILE } from '../lib/store-profile';
 import { useCartStore } from '../stores/cart-store';
 import { AccountMenu } from './account-menu';
+import { BackToTop } from './back-to-top';
 import { BootScreen } from './boot-screen';
 import { ImJaiMark } from './brand-logo';
 import { CartDrawer } from './cart-drawer';
@@ -61,7 +62,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           <div className="header-actions">
             <AccountMenu />
             <button className="cart-button" onClick={openCart} aria-label={`เปิดตะกร้า มี ${count} รายการ`}>
-              <ShoppingBag size={19} /><span className="cart-label">ตะกร้า</span>{count > 0 && <b>{count}</b>}
+              <ShoppingBag size={19} /><span className="cart-label">ตะกร้า</span>{count > 0 && <b key={count}>{count}</b>}
             </button>
             <button className="icon-button mobile-menu-button" onClick={() => setMobileOpen(true)} aria-label="เปิดเมนู"><Menu size={22} /></button>
           </div>
@@ -85,6 +86,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
       <CartDrawer />
       <FlyToCart />
       <TactileLayer />
+      <BackToTop />
       {!backOfHouse && <ImJaiAssistant />}
       {!backOfHouse && (
         <footer className="site-footer">

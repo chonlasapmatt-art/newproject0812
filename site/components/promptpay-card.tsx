@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import { User } from 'lucide-react';
+import { Check, Copy, User } from 'lucide-react';
 
 /**
  * The scannable payment card shown at checkout.
@@ -27,6 +27,33 @@ type Props = {
 export function PromptPayCard({ payload, amountDisplay, accountName, orderNumber }: Props) {
   const [svg, setSvg] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [copied, setCopied] = useState<'ok' | 'no' | null>(null);
+  const copyTimer = useRef<number | null>(null);
+
+  /**
+   * Hand the exact figure over rather than making anyone read it off.
+   *
+   * The satang suffix is what maps the transfer back to this order, so a payer
+   * who types 288.00 instead of 288.42 has paid an amount the shop cannot
+   * match. Copying removes the one step where that mistake happens. Only the
+   * number goes to the clipboard — a banking app has nowhere to put a ฿.
+   */
+  const copyAmount = async () => {
+    if (copyTimer.current) window.clearTimeout(copyTimer.current);
+    try {
+      await navigator.clipboard.writeText(amountDisplay);
+      setCopied('ok');
+    } catch {
+      // No clipboard permission, or an insecure origin. Say so instead of
+      // showing a tick for something that did not happen.
+      setCopied('no');
+    }
+    copyTimer.current = window.setTimeout(() => setCopied(null), 2000);
+  };
+
+  useEffect(() => () => {
+    if (copyTimer.current) window.clearTimeout(copyTimer.current);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -77,7 +104,12 @@ export function PromptPayCard({ payload, amountDisplay, accountName, orderNumber
 
         <div className="ppay-amount">
           <small>ยอดที่ต้องโอน</small>
-          <b>฿{amountDisplay}</b>
+          <div className="ppay-amount-row">
+            <b>฿{amountDisplay}</b>
+            <button type="button" className={`ppay-copy ${copied ?? ''}`} onClick={copyAmount}>
+              {copied === 'ok' ? <><Check size={14} /> คัดลอกแล้ว</> : copied === 'no' ? 'คัดลอกไม่ได้' : <><Copy size={14} /> คัดลอกยอด</>}
+            </button>
+          </div>
           {orderNumber && <em>โอนให้ตรงยอดนี้ เศษสตางค์คือรหัสออเดอร์ {orderNumber}</em>}
         </div>
       </div>
