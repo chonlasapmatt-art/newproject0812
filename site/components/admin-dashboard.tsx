@@ -36,7 +36,7 @@ import {
   type OrderStatus,
   type StoredOrder,
 } from '../lib/orders';
-import { isAdminListConfigured, isPreviewMode, setPreviewAdmin, useSession } from '../lib/session';
+import { isAdminListConfigured, isPreviewMode, setPreviewAdmin, useCan, useSession } from '../lib/session';
 import { getUnlockedServerSnapshot, getUnlockedSnapshot, subscribeUnlocked, unlock } from '../lib/dashboard-access';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { STORE_PROFILE, pendingRealData } from '../lib/store-profile';
@@ -548,10 +548,11 @@ export function AdminDashboard() {
   const session = useSession();
   const orders = useOrders();
   const [tab, setTab] = useState<Tab>('overview');
-  const { status, role } = session;
+  const { status } = session;
+  const { canSeeDashboard } = useCan();
   // In preview the role is only half the answer; the key is the other half.
   const unlocked = useSyncExternalStore(subscribeUnlocked, getUnlockedSnapshot, getUnlockedServerSnapshot);
-  const mayEnter = isPreviewMode ? role === 'admin' && unlocked : role === 'admin';
+  const mayEnter = isPreviewMode ? canSeeDashboard && unlocked : canSeeDashboard;
 
   if (status === 'loading') {
     return <main className="admin-lock"><span className="loading-ring" /><p>กำลังตรวจสอบสิทธิ์…</p></main>;

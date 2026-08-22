@@ -5,7 +5,7 @@ import { CircleUserRound, LayoutDashboard, LogOut, Package, Repeat2, UserRound }
 import Link from 'next/link';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { EASE, useMotionOK } from '../lib/motion';
-import { isPreviewMode, setPreviewAdmin, useSession, useSignOut } from '../lib/session';
+import { isPreviewMode, setPreviewAdmin, useCan, useSession, useSignOut } from '../lib/session';
 import { getUnlockedServerSnapshot, getUnlockedSnapshot, subscribeUnlocked } from '../lib/dashboard-access';
 
 /**
@@ -19,6 +19,7 @@ import { getUnlockedServerSnapshot, getUnlockedSnapshot, subscribeUnlocked } fro
 
 export function AccountMenu() {
   const session = useSession();
+  const { canSeeDashboard } = useCan();
   const signOut = useSignOut();
   const motionOK = useMotionOK();
   const [open, setOpen] = useState(false);
@@ -52,7 +53,7 @@ export function AccountMenu() {
     );
   }
 
-  const { user, role } = session;
+  const { user } = session;
   const initial = (user.name || user.email).slice(0, 1).toUpperCase();
 
   return (
@@ -90,7 +91,7 @@ export function AccountMenu() {
             <Link prefetch={false} role="menuitem" href="/track" onClick={() => setOpen(false)}>
               <Package size={16} /> ออเดอร์ของฉัน
             </Link>
-            {role === 'admin' && (
+            {canSeeDashboard && (
               <Link prefetch={false} role="menuitem" href="/admin" onClick={() => setOpen(false)}>
                 <LayoutDashboard size={16} /> แดชบอร์ดร้าน
               </Link>
@@ -111,11 +112,11 @@ export function AccountMenu() {
                 role="menuitem"
                 className="account-switch"
                 onClick={() => {
-                  setPreviewAdmin(role !== 'admin');
+                  setPreviewAdmin(!canSeeDashboard);
                   setOpen(false);
                 }}
               >
-                <Repeat2 size={16} /> {role === 'admin' ? 'ดูแบบลูกค้าทั่วไป' : 'ดูแบบแอดมินร้าน'}
+                <Repeat2 size={16} /> {canSeeDashboard ? 'ดูแบบลูกค้าทั่วไป' : 'ดูแบบแอดมินร้าน'}
               </button>
             )}
 

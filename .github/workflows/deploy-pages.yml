@@ -31,8 +31,13 @@ jobs:
       # the canonical URL are read from the repository rather than written in.
       PAGES_BASE_PATH: /${{ github.event.repository.name }}
       NEXT_PUBLIC_SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
-      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      # The shop's project. Both values are public by design: the key is a
+      # publishable one, it ships inside every page the browser downloads, and
+      # what protects the data is row-level security rather than hiding it.
+      # Rotate it from the Supabase dashboard if it ever needs replacing; set
+      # the repository variables to point the site at a different project.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://vshufucommkfgmdtaodq.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_3kIomZXqcYrSbEURkP7K4Q_0OxNBczz' }}
       NEXT_PUBLIC_ADMIN_PREVIEW_MODE: "false"
       # Deliberately has no fallback: an email address should not sit in a
       # public repository. Set the repository variable to switch the
@@ -77,6 +82,15 @@ jobs:
           # itself the role at runtime. This copy is thrown away after the
           # suite runs; the published build below uses the repository variable.
           NEXT_PUBLIC_ADMIN_EMAILS: admin@imjai.test
+          # Built without a project on purpose. With one configured Supabase
+          # becomes the authority on who is signed in, and a session the suite
+          # seeded into localStorage is correctly discarded — so the suite would
+          # be testing Supabase's auth rather than this site's logic. The gap
+          # that leaves is real and worth naming: the signed-in path against a
+          # live project is not covered here, and closing it needs a throwaway
+          # project with seeded users rather than a flag.
+          NEXT_PUBLIC_SUPABASE_URL: ""
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
 
       - name: End-to-end tests against the exported site
         run: |

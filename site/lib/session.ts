@@ -19,7 +19,7 @@ import { isSupabaseConfigured, supabase } from './supabase';
  * a database exists to ask.
  */
 
-export type Role = 'guest' | 'customer' | 'admin';
+export type Role = 'guest' | 'customer' | 'staff' | 'admin';
 
 export type SessionUser = {
   email: string;
@@ -73,12 +73,22 @@ function hasPreviewAdmin(): boolean {
   }
 }
 
-/** Case and stray spaces should never decide whether someone is staff. */
+/**
+ * The role a browser can work out on its own.
+ *
+ * This is the answer before the database has one — the build-time list, or the
+ * preview switch. Once Supabase is connected, `profiles.role` replaces it: see
+ * `applyAccount` below. Nothing here can grant a role the server will honour;
+ * row-level security decides what any of them can actually read.
+ */
 export function roleFor(email: string | null | undefined): Role {
   if (!email) return 'guest';
   if (ADMIN_EMAILS.includes(email.trim().toLowerCase())) return 'admin';
   return hasPreviewAdmin() ? 'admin' : 'customer';
 }
+
+/** Only these two open the dashboard. `customer` never does. */
+const BACK_OF_HOUSE: Role[] = ['staff', 'admin'];
 
 const SIGNED_OUT: Session = { status: 'signed-out', user: null, role: 'guest' };
 const LOADING: Session = { status: 'loading', user: null, role: 'guest' };
@@ -136,39 +146,55 @@ function subscribe(onChange: () => void) {
     if (isSupabaseConfigured && supabase) {
       // Supabase is the authority when it is configured: whatever it reports
       // replaces the locally remembered session, including signing us out.
-      supabase.auth.getUser().then(({ data }) => {
-        const account = data.user;
-        if (!account?.email) return;
-        const user: SessionUser = {
-          email: account.email,
-          name: (account.user_metadata?.full_name as string) || account.email.split('@')[0],
-          verified: true,
-        };
-        persist(user);
-        setSession({ status: 'signed-in', user, role: roleFor(user.email) });
-      });
-
-      supabase.auth.onAuthStateChange((_event, session) => {
-        const account = session?.user;
-        if (!account?.email) {
-          persist(null);
-          setSession(SIGNED_OUT);
-          return;
-        }
-        const user: SessionUser = {
-          email: account.email,
-          name: (account.user_metadata?.full_name as string) || account.email.split('@')[0],
-          verified: true,
-        };
-        persist(user);
-        setSession({ status: 'signed-in', user, role: roleFor(user.email) });
-      });
+      supabase.auth.getUser().then(({ data }) => applyAccount(data.user));
+      supabase.auth.onAuthStateChange((_event, next) => applyAccount(next?.user ?? null));
     }
   }
 
   return () => {
     listeners.delete(onChange);
   };
+}
+
+/**
+ * Turn a Supabase account into a session, role and all.
+ *
+ * The session is published twice on purpose. First immediately, so a signed-in
+ * customer is not left looking at a signed-out header while a second request
+ * is in flight; then again once `profiles.role` comes back, which is the only
+ * answer that counts. The row is readable because RLS lets an account read its
+ * own profile, and `role` is not writable from here at all — the migration
+ * revokes that column from `authenticated`, so a browser cannot promote
+ * itself no matter what it sends.
+ */
+async function applyAccount(account: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null) {
+  if (!account?.email || !supabase) {
+    persist(null);
+    setSession(SIGNED_OUT);
+    return;
+  }
+
+  const user: SessionUser = {
+    email: account.email,
+    name: (account.user_metadata?.full_name as string) || account.email.split('@')[0],
+    verified: true,
+  };
+  persist(user);
+  setSession({ status: 'signed-in', user, role: 'customer' });
+
+  try {
+    const { data } = await supabase.from('profiles').select('role').eq('id', account.id).maybeSingle();
+    const stored = data?.role as Role | undefined;
+    setSession({
+      status: 'signed-in',
+      user,
+      role: stored && BACK_OF_HOUSE.includes(stored) ? stored : 'customer',
+    });
+  } catch {
+    // The profile could not be read — stay a customer rather than guess
+    // upward. A shop locked out of its own dashboard is recoverable; a
+    // stranger let into it is not.
+  }
 }
 
 const snapshot = () => current;
@@ -183,11 +209,11 @@ export function useCan() {
   const { role, status } = useSession();
   return {
     role,
-    isAdmin: role === 'admin',
+    isAdmin: BACK_OF_HOUSE.includes(role),
     isSignedIn: status === 'signed-in',
     /** Placing an order is the one action that needs an account. */
     canOrder: status === 'signed-in',
-    canSeeDashboard: role === 'admin',
+    canSeeDashboard: BACK_OF_HOUSE.includes(role),
   };
 }
 
