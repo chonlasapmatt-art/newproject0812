@@ -65,7 +65,17 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" />
         <script
           dangerouslySetInnerHTML={{
-            __html: "document.documentElement.classList.remove('no-js');",
+            /* Two guards before the first paint. Removing no-js keeps
+               reveal-on-scroll content visible if the bundle never runs. The
+               theme has to be written here rather than at hydration: applied a
+               beat later, a visitor who chose dark would be shown a white page
+               first, which is the exact thing they asked to avoid. */
+            __html:
+              "document.documentElement.classList.remove('no-js');" +
+              "try{var t=localStorage.getItem('imjai-theme');" +
+              "if(t!=='light'&&t!=='soft'&&t!=='dark')" +
+              "t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';" +
+              "document.documentElement.dataset.theme=t}catch(e){}",
           }}
         />
       </head>

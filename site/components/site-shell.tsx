@@ -10,6 +10,7 @@ import { SHOP_LINE, SHOP_LINE_URL, SHOP_PHONE, STORE_PROFILE } from '../lib/stor
 import { useCartStore } from '../stores/cart-store';
 import { AccountMenu } from './account-menu';
 import { BackToTop } from './back-to-top';
+import { ThemeSwitch } from './theme-switch';
 import { BootScreen } from './boot-screen';
 import { ImJaiMark } from './brand-logo';
 import { CartDrawer } from './cart-drawer';
@@ -60,6 +61,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             {isAdmin && <Link prefetch={false} className={`nav-admin ${pathname === '/admin' ? 'active' : ''}`} href="/admin"><LayoutDashboard size={14} /> แดชบอร์ด</Link>}
           </nav>
           <div className="header-actions">
+            <ThemeSwitch />
             <AccountMenu />
             <button className="cart-button" onClick={openCart} aria-label={`เปิดตะกร้า มี ${count} รายการ`}>
               <ShoppingBag size={19} /><span className="cart-label">ตะกร้า</span>{count > 0 && <b key={count}>{count}</b>}
