@@ -91,3 +91,47 @@ test('a price the shop changes is the price the customer pays', async ({ page })
   await page.waitForLoadState('networkidle');
   await expect(page.locator('.catalog-card', { hasText: 'ข้าวไข่เจียวหมูสับ' })).toContainText('฿72');
 });
+
+/**
+ * The sales screen is what the shop will reconcile against its till, so this
+ * checks the arithmetic reaches the page — not that a chart rendered.
+ */
+test('the sales screen totals the real orders and ranks the real dishes', async ({ page }) => {
+  await signIn(page, ADMIN_EMAIL);
+  await unlockDashboard(page);
+  await seedOrders(page, [
+    anOrder({ status: 'completed' }),
+    anOrder({
+      orderNumber: 'IJ260821-CAKE',
+      idempotencyKey: 'e2e-cake',
+      status: 'completed',
+      lines: [{ id: 'c', sku: 'DS-01', name: 'เค้กช็อกโกแลต', unitPrice: 89, quantity: 5, emoji: '🍰' }],
+      totals: { subtotal: 445, discount: 0, deliveryFee: 0, total: 445 },
+    }),
+    // Cancelled: placed, refused, and therefore never earned.
+    anOrder({
+      orderNumber: 'IJ260821-VOID',
+      idempotencyKey: 'e2e-void',
+      status: 'cancelled',
+      totals: { subtotal: 900, discount: 0, deliveryFee: 0, total: 900 },
+    }),
+  ]);
+
+  await page.goto('/admin');
+  await page.waitForLoadState('networkidle');
+  await page.getByRole('button', { name: /^ยอดขาย$/ }).click();
+
+  // 158 + 445, with the cancelled 900 left out.
+  await expect(page.locator('.metric-grid h2').first()).toHaveText('฿603');
+  await expect(page.locator('.metric-grid h2').nth(1)).toHaveText('฿302');
+
+  // The cake outsold the rice, so it leads.
+  await expect(page.locator('.sales-ranking li').first()).toContainText('เค้กช็อกโกแลต');
+  await expect(page.locator('.sales-ranking li').first()).toContainText('฿445');
+  await expect(page.locator('.sales-ranking li').first()).toContainText('5 ที่');
+
+  // Today is bucketed by hour; a week is bucketed by day.
+  await expect(page.locator('.sales-bar')).toHaveCount(24);
+  await page.getByRole('button', { name: /^7 วัน$/ }).click();
+  await expect(page.locator('.sales-bar')).toHaveCount(7);
+});

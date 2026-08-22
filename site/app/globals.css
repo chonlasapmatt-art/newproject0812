@@ -217,6 +217,50 @@ button { color: inherit; }
 .demo-badge { width: fit-content; margin: -22px auto 30px; padding: 6px 14px; border: 1px dashed var(--line); border-radius: 999px; background: var(--paper); color: #8a7a70; font-size: 11px; font-weight: 600; }
 
 
+/* --- Sales ------------------------------------------------------------ *
+   One series per chart, so one colour per chart rather than a ramp that would
+   restate the bar length in hue. These two steps of the shop's own orange and
+   sage clear 3:1 against the card; the lighter brand tones used elsewhere do
+   not, which is why the charts do not simply reuse --orange and --sage. */
+:root { --mark-revenue: #c8612d; --mark-dish: #44573e; --mark-track: #efe8dd; }
+
+.sales-panels { grid-template-columns: 1.35fr 1fr; }
+
+.sales-chart { margin: 18px 0 0; }
+/* Thin marks: a saturated fill belongs on a small mark, not a broad block.
+   Capped rather than fluid so a seven-day range does not draw seven slabs. */
+.sales-bars { height: 210px; display: flex; align-items: flex-end; gap: 4px; }
+.sales-bar { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+/* The track is the hover target, so a quiet column is still readable — a
+   hit area the size of the bar would make an empty hour unhoverable. */
+.sales-bar-track { position: relative; height: 210px; display: flex; align-items: flex-end; border-radius: 4px; }
+.sales-bar-track::after { content: ''; position: absolute; inset: auto 0 0; height: 1px; background: var(--line); }
+.sales-bar-track:hover { background: rgba(108,63,43,.05); }
+.sales-bar-fill { width: 100%; max-width: 20px; margin: 0 auto; border-radius: 4px 4px 0 0; background: var(--mark-revenue); }
+.sales-bar small { overflow: hidden; color: #8a7a70; font-size: 9.5px; text-align: center; white-space: nowrap; }
+.sales-bar small.is-quiet { visibility: hidden; }
+
+.sales-tip { position: absolute; z-index: 2; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); display: grid; gap: 2px; width: max-content; max-width: 170px; padding: 8px 11px; border-radius: 9px; background: var(--ink); color: #f4ebdc; font-size: 10.5px; line-height: 1.5; opacity: 0; pointer-events: none; transition: opacity .14s ease; }
+.sales-tip b { font-size: 11.5px; }
+.sales-bar-track:hover .sales-tip { opacity: 1; }
+
+.sales-chart figcaption { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: #7b6b61; font-size: 11.5px; line-height: 1.6; }
+
+.sales-ranking { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 13px; }
+.sales-ranking li { display: grid; grid-template-columns: 34px 1fr auto; gap: 11px; align-items: center; }
+.sales-rank-art { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; background: var(--cream); font-size: 17px; }
+.sales-ranking li > div { min-width: 0; display: grid; gap: 6px; }
+.sales-ranking b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.sales-rank-track { height: 7px; border-radius: 999px; background: var(--mark-track); }
+.sales-rank-fill { display: block; height: 100%; border-radius: 999px; background: var(--mark-dish); }
+.sales-ranking em { display: grid; gap: 1px; justify-items: end; font-style: normal; }
+.sales-ranking em b { font-size: 12.5px; }
+.sales-ranking em small { color: #8a7a70; font-size: 10px; }
+
+@media (max-width: 1100px) { .sales-panels { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .sales-tip { transition: none; } }
+
+
 /* --- Motion primitives ------------------------------------------------ *
    Four pieces shared across pages. Each is CSS only where CSS is enough,
    so the component files carry behaviour rather than styling. */

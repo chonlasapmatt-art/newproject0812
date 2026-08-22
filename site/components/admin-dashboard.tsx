@@ -12,6 +12,7 @@ import {
   Search,
   Settings,
   ShieldAlert,
+  LineChart,
   TrendingUp,
   Users,
   Wallet,
@@ -39,6 +40,7 @@ import { isAdminListConfigured, isPreviewMode, setPreviewAdmin, useSession } fro
 import { getUnlockedServerSnapshot, getUnlockedSnapshot, subscribeUnlocked, unlock } from '../lib/dashboard-access';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { STORE_PROFILE, pendingRealData } from '../lib/store-profile';
+import { AdminSales } from './admin-sales';
 import { ImJaiMark } from './brand-logo';
 
 /**
@@ -56,10 +58,11 @@ import { ImJaiMark } from './brand-logo';
  * actually protects anything is row-level security on the server.
  */
 
-type Tab = 'overview' | 'orders' | 'menu' | 'customers' | 'settings';
+type Tab = 'overview' | 'sales' | 'orders' | 'menu' | 'customers' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: typeof BarChart3 }[] = [
   { id: 'overview', label: 'ภาพรวม', icon: BarChart3 },
+  { id: 'sales', label: 'ยอดขาย', icon: LineChart },
   { id: 'orders', label: 'ออเดอร์', icon: ClipboardList },
   { id: 'menu', label: 'เมนูและสต็อก', icon: ChefHat },
   { id: 'customers', label: 'ลูกค้า', icon: Users },
@@ -621,6 +624,7 @@ export function AdminDashboard() {
         <AnimatePresence mode="wait">
           <motion.div key={tab} {...rise}>
             {tab === 'overview' && <Overview orders={orders} />}
+        {tab === 'sales' && <AdminSales orders={orders} />}
             {tab === 'orders' && <Orders orders={orders} />}
             {tab === 'menu' && <MenuManager />}
             {tab === 'customers' && <Customers orders={orders} />}
