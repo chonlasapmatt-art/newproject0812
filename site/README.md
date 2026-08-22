@@ -18,19 +18,42 @@
 - SQL migrations, RLS, Storage policies, seed menu, Edge Functions, Unit tests และ Playwright
 - SEO metadata, Open Graph, Restaurant structured data, `sitemap.xml`, `robots.txt`
 
+### เพิ่มเข้ามาภายหลัง
+
+- **น้องอิ่มใจตอบจากข้อมูลจริง** (`lib/imjai-brain.ts`) — เมนูสด สต็อกสด ข้อมูลร้าน และออเดอร์
+  ของคนที่ถามเท่านั้น แต่งเมนูเองไม่ได้ บอกราคาที่ไม่มีในเมนูไม่ได้ และเปิดออเดอร์คนอื่นไม่ได้
+- **แดชบอร์ดที่ใช้เดินร้านได้จริง** — ตัวเลขมาจากออเดอร์จริง เปลี่ยนสถานะแล้วลูกค้าเห็นทันที
+  กดยืนยัน/ปฏิเสธสลิปได้ แก้ราคาและสต็อกแล้วหน้าเว็บเปลี่ยนทันที
+- **ประตูบัญชีตอนกดลงตะกร้า** (`lib/add-to-cart.ts`) — คนที่ยังไม่ล็อกอินถูกพาไปสมัคร
+  แล้วพากลับมาที่เดิมพร้อมของที่กดค้างไว้ และมีปุ่มออกจากระบบในเมนูบัญชี
+- **ระบบ motion กลาง** (`lib/motion.ts`) — easing กับ duration ชุดเดียวทั้งเว็บ
+  ทุกอย่างปิดตัวเองเมื่อผู้ใช้ตั้ง `prefers-reduced-motion`
+
+### ไฟล์ที่ควรรู้จักก่อนแก้
+
+| ไฟล์ | ทำอะไร |
+|---|---|
+| `lib/catalog.ts` | เมนูตั้งต้น 16 รายการ ราคา ส่วนประกอบ สารก่อภูมิแพ้ |
+| `lib/store-profile.ts` | ข้อมูลร้านทุกอย่างที่หน้าเว็บพูดถึง — แก้ที่นี่ที่เดียวเปลี่ยนทุกหน้า |
+| `lib/orders.ts` | ออเดอร์ทั้งหมด สถานะ และตัวเลขสรุปของแดชบอร์ด |
+| `lib/menu-admin.ts` | การแก้ราคา/สต็อกจากหลังร้าน ทับลงบน `catalog.ts` |
+| `lib/imjai-brain.ts` | สมองของน้องอิ่มใจ — เพิ่มคำถามที่ตอบได้ที่นี่ |
+| `lib/promptpay.ts` | สร้าง payload QR ตามมาตรฐาน EMVCo (แก้ระวัง มี test คุมอยู่) |
+| `app/globals.css` | สไตล์ทั้งเว็บไฟล์เดียว |
+
 > หมายเหตุ: หน้าเว็บออนไลน์ทำงานในโหมด Guest ได้ทันที ส่วนสมาชิก ฐานข้อมูล Realtime อัปโหลดสลิป Admin และ AI จริงต้องเชื่อม Supabase ของร้านตามขั้นตอนด้านล่าง
 
 ## โครงสร้างสำคัญ
 
 ```text
-app/                  เส้นทางหน้าเว็บ
-components/           หน้าร้านและส่วนโต้ตอบ
-lib/                  ข้อมูลเมนู การคำนวณ และ Supabase client
+app/                  เส้นทางหน้าเว็บ (แต่ละโฟลเดอร์คือ 1 หน้า)
+components/           หน้าร้านและส่วนโต้ตอบทั้งหมด
+lib/                  ข้อมูล ตรรกะ และ state ที่อยู่นอก React
 stores/               Zustand cart store
 supabase/migrations/  Schema, RLS, RPC และ seed data
-supabase/functions/   create-order และ ai-assistant
-tests/                Unit/security tests
-e2e/                  Playwright critical paths
+supabase/functions/   create-order, verify-slip และ ai-assistant
+tests/                Unit tests (รันด้วย vitest)
+e2e/                  Playwright — รันกับไฟล์ที่ export จริง
 public/og.png         ภาพพรีวิวเวลาแชร์ลิงก์
 menu-image-prompts.json  Prompt สำหรับภาพเมนูจริง 16 รายการ
 ```
@@ -151,13 +174,19 @@ npm run test:e2e
 
 ## Deploy ด้วย GitHub Pages
 
-Workflow ที่ Repository root จะ Build แบบ Static Export โดยใช้ base path:
+`.github/workflows/deploy-pages.yml` จะรัน lint → unit tests → build → E2E บนไฟล์ที่ export
+จริง แล้วค่อย push ผลลัพธ์ขึ้น branch `gh-pages` — การ push นั้นคือการ deploy
 
-```text
-/restaurant-im-jai-ai-agent/
-```
+base path ไม่ได้เขียนตายในโค้ด แต่อ่านจากชื่อ repository ผ่าน `PAGES_BASE_PATH`
+เปลี่ยนชื่อ repo หรือ fork ไปแล้วลิงก์ยังถูกเสมอ
 
-ตั้งค่า Repository > Settings > Pages > Source เป็น **GitHub Actions** แล้ว Push ไป branch `main` หรือ branch ที่ระบุใน Workflow
+ตัวแปรที่ตั้งได้ที่ **Settings → Secrets and variables → Actions → Variables**
+
+| Variable | ผลถ้าไม่ตั้ง |
+|---|---|
+| `NEXT_PUBLIC_ADMIN_EMAILS` | เว็บที่ deploy จะไม่มีแอดมินเลย (ตั้งใจ — อีเมลไม่ควรอยู่ใน repo สาธารณะ) |
+| `NEXT_PUBLIC_SUPABASE_URL` / `..._ANON_KEY` | ทำงานโหมดพรีวิว เก็บข้อมูลในเบราว์เซอร์ |
+| `NEXT_PUBLIC_PROMPTPAY_ID` / `..._NAME` | ใช้ค่า default ที่ระบุใน workflow |
 
 ## Deploy Backend
 
