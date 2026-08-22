@@ -48,7 +48,7 @@ a:focus-visible, button:focus-visible { outline: 3px solid #f2a56c; outline-offs
 .hero { min-height: 760px; display: grid; grid-template-columns: 1.02fr .98fr; background: var(--cream); overflow: hidden; }
 .hero-copy { display: flex; flex-direction: column; justify-content: center; padding: 130px 5vw 70px max(5vw, calc((100vw - 1380px)/2 + 5vw)); }
 .eyebrow { margin: 0 0 22px; color: var(--orange); font-size: 11px; font-weight: 800; letter-spacing: .22em; }
-.hero h1 { margin: 0; max-width: 620px; font-family: var(--font-display); font-size: clamp(60px, 7vw, 106px); font-weight: 500; line-height: .94; letter-spacing: -.055em; }
+.hero h1 { margin: 0; max-width: 620px; font-family: var(--font-display); font-size: clamp(60px, 7vw, 106px); font-weight: 500; line-height: 1.12; letter-spacing: -.055em; }
 /* The accent word is an <em> so the reveal wrapper's own spans, which sit
    between the heading and the text, cannot inherit the accent colour. */
 .hero h1 em { color: var(--orange); font-style: italic; }
@@ -1037,11 +1037,6 @@ h1, h2, h3, .hero h1, .brand b {
   .cart-button b { animation: none; }
   .boot-steam { display: none; }
 }
-
-/* The opening is server-rendered so it is on screen at first paint rather than
-   appearing after hydration. For a visitor who has already seen it this class,
-   set by an inline script before paint, removes it with no flash. */
-.boot-seen .boot { display: none !important; }
 
 /* ═══════════════════════════════════════════════════════════════════════
    DEPTH

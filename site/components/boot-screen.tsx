@@ -1,69 +1,22 @@
 'use client';
 
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { DURATION, EASE, useMotionOK } from '../lib/motion';
 
 /**
  * The opening sequence — the kitchen coming to life before the first plate.
  *
  * A ring draws itself the way a wok is wiped clean, steam rises through it on
- * a canvas, and the whole panel lifts away like a lid. It runs once per
- * session and can be dismissed at any point: an opening a visitor cannot skip
- * is a door that sticks.
+ * a canvas, and the whole panel lifts away like a lid. It plays on every
+ * visit and every page change, and can be dismissed at any point: an opening
+ * a visitor cannot skip is a door that sticks. Kept brief on purpose, since a
+ * visitor meets it on every navigation rather than once per session.
  */
-
-const SESSION_KEY = 'imjai-intro-seen';
 
 /** How long the panel stays before lifting, in ms. */
-const HOLD_MS = 1900;
-
-/**
- * Whether the opening plays lives outside React.
- *
- * It is decided once, from sessionStorage, and never changes back — which is
- * exactly the shape useSyncExternalStore wants. Holding it in component state
- * would mean setting that state from an effect on first paint, and the panel
- * would flash in after the page had already drawn.
- */
-let decided = false;
-let visible = false;
-const listeners = new Set<() => void>();
-
-function bootSnapshot(): boolean {
-  if (!decided) {
-    decided = true;
-    try {
-      visible = sessionStorage.getItem(SESSION_KEY) !== '1';
-    } catch {
-      // Private browsing can refuse storage; playing the opening once more is
-      // a smaller cost than failing to render the shell.
-      visible = true;
-    }
-  }
-  return visible;
-}
-
-/**
- * The server cannot read the session, so it always renders the opening —
- * that way it is painted with the first HTML instead of appearing a beat
- * later. A returning visitor never sees it: the inline guard in the document
- * head hides it with CSS before paint, and React drops it at hydration.
- */
-const serverSnapshot = () => true;
-
-function subscribeBoot(onChange: () => void) {
-  listeners.add(onChange);
-  return () => {
-    listeners.delete(onChange);
-  };
-}
-
-function dismissBoot() {
-  if (!visible) return;
-  visible = false;
-  for (const listener of listeners) listener();
-}
+const HOLD_MS = 1200;
 
 type Steam = { x: number; y: number; radius: number; life: number; drift: number; speed: number };
 
@@ -143,30 +96,41 @@ function useSteamCanvas(active: boolean, motionOK: boolean) {
 }
 
 export function BootScreen() {
+  const pathname = usePathname();
   const motionOK = useMotionOK();
-  const showing = useSyncExternalStore(subscribeBoot, bootSnapshot, serverSnapshot);
+  const [showing, setShowing] = useState(true);
   const canvasRef = useSteamCanvas(showing, motionOK);
+  const dismiss = () => setShowing(false);
 
-  // Mark the session as having seen it, and lift the panel on its own.
+  // Raising the panel back up happens here, during render, rather than in an
+  // effect: an effect fires after the new page has already painted, so the
+  // page underneath would flash visible for a frame before the panel caught
+  // up. Setting state mid-render instead means React redoes this render with
+  // the panel already back up, before anything reaches the screen.
+  const [shownFor, setShownFor] = useState(pathname);
+  if (pathname !== shownFor) {
+    setShownFor(pathname);
+    setShowing(true);
+  }
+
+  // Every navigation — including the first — lifts the panel again after a
+  // short hold, so a visitor always sees the shop announce itself before the
+  // page underneath is revealed.
   useEffect(() => {
-    if (!showing) return;
-    try {
-      sessionStorage.setItem(SESSION_KEY, '1');
-    } catch {
-      // Nothing to do: the opening simply plays again next time.
-    }
-    const timer = window.setTimeout(dismissBoot, HOLD_MS);
+    const timer = window.setTimeout(dismiss, HOLD_MS);
     return () => window.clearTimeout(timer);
-  }, [showing]);
+  }, [pathname]);
 
   // Any keypress leaves, so the sequence never traps keyboard users.
   useEffect(() => {
     if (!showing) return;
-    window.addEventListener('keydown', dismissBoot);
-    return () => window.removeEventListener('keydown', dismissBoot);
+    window.addEventListener('keydown', dismiss);
+    return () => window.removeEventListener('keydown', dismiss);
   }, [showing]);
 
-  const seconds = motionOK ? DURATION.cinematic : 0.01;
+  // A quick opening: it plays on every visit now, so it must clear out of
+  // the way fast rather than linger like a once-per-session moment would.
+  const seconds = motionOK ? DURATION.cinematic * 0.55 : 0.01;
 
   return (
     <AnimatePresence>
@@ -174,9 +138,9 @@ export function BootScreen() {
         <motion.div
           className="boot"
           role="presentation"
-          onClick={dismissBoot}
+          onClick={dismiss}
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0, y: '-6%', transition: { duration: motionOK ? 0.62 : 0.01, ease: EASE.exit } }}
+          exit={{ opacity: 0, y: '-6%', transition: { duration: motionOK ? 0.4 : 0.01, ease: EASE.exit } }}
         >
           <canvas ref={canvasRef} className="boot-steam" aria-hidden />
 

@@ -3,23 +3,27 @@ import { test as base } from '@playwright/test';
 /**
  * Shared test setup.
  *
- * The opening sequence covers the page for about two seconds on the first load
- * of a fresh tab. That is right for a visitor and wrong for a test: every
- * navigation would spend the time waiting for it to lift, and the suite starts
+ * The opening sequence now plays on every navigation — including a client-side
+ * one, not just a fresh document — and covers the page while it does. Waiting
+ * it out on every test navigation would spend real time and risk the suite
  * failing on timeouts rather than on defects.
  *
- * Marking it as already seen before any page script runs skips it, exactly as
- * it is skipped for someone returning to a tab they have already used. Tests
- * that exercise the opening itself should use the raw `test` from Playwright.
+ * The component already leaves on any keypress, for a visitor who wants past
+ * it — this dispatches one on a short poll for as long as the page lives,
+ * which clears each appearance in roughly one hydration tick instead of the
+ * full hold. It has to keep running for the page's whole lifetime rather than
+ * stopping after the first one: `addInitScript` only re-runs on a fresh
+ * document, and a same-document route change is exactly the case where the
+ * opening now replays without one. Tests that exercise the opening itself
+ * should use the raw `test` from Playwright.
  */
 export const test = base.extend({
   page: async ({ page }, runTest) => {
     await page.addInitScript(() => {
-      try {
-        sessionStorage.setItem('imjai-intro-seen', '1');
-      } catch {
-        // Storage unavailable: the opening plays and the test waits it out.
-      }
+      window.setInterval(() => {
+        if (!document.querySelector('.boot')) return;
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      }, 30);
     });
 
     // Serve the webfont request locally. Reaching the real font host makes

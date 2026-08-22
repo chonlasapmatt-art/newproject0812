@@ -1,9 +1,11 @@
 'use client';
 
+import { AnimatePresence, motion } from 'motion/react';
 import { Ban, Check, ChefHat, Clock3, PackageCheck, Search, Truck } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState, type CSSProperties } from 'react';
+import { rise } from '../lib/motion';
 import { SHOP_PHONE } from '../lib/store-profile';
 import {
   flowFor,
@@ -207,24 +209,26 @@ export function TrackPage() {
           </div>
         )}
 
-        {order ? (
-          <OrderCard order={order} />
-        ) : query ? (
-          <div className="track-empty">
-            <span>🧾</span>
-            <h2>ยังไม่พบออเดอร์นี้</h2>
-            <p>ตรวจเลขออเดอร์และเบอร์โทรอีกครั้ง หรือติดต่อร้านที่ {SHOP_PHONE}</p>
-            {session.status !== 'signed-in' && (
-              <Link prefetch={false} className="primary-button" href="/account">เข้าสู่ระบบเพื่อดูออเดอร์ของคุณ</Link>
-            )}
-          </div>
-        ) : (
-          <div className="track-prompt">
-            <span>🍳</span>
-            <h2>พร้อมติดตามทุกขั้นตอน</h2>
-            <p>สถานะจะอัปเดตตั้งแต่ร้านรับออเดอร์ กำลังปรุง จนถึงพร้อมรับหรือจัดส่ง</p>
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {order ? (
+            <motion.div key="order" {...rise}><OrderCard order={order} /></motion.div>
+          ) : query ? (
+            <motion.div className="track-empty" key="empty" {...rise}>
+              <span>🧾</span>
+              <h2>ยังไม่พบออเดอร์นี้</h2>
+              <p>ตรวจเลขออเดอร์และเบอร์โทรอีกครั้ง หรือติดต่อร้านที่ {SHOP_PHONE}</p>
+              {session.status !== 'signed-in' && (
+                <Link prefetch={false} className="primary-button" href="/account">เข้าสู่ระบบเพื่อดูออเดอร์ของคุณ</Link>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div className="track-prompt" key="prompt" {...rise}>
+              <span>🍳</span>
+              <h2>พร้อมติดตามทุกขั้นตอน</h2>
+              <p>สถานะจะอัปเดตตั้งแต่ร้านรับออเดอร์ กำลังปรุง จนถึงพร้อมรับหรือจัดส่ง</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
     </main>
   );

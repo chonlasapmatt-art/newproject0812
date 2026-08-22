@@ -52,11 +52,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="th" className="no-js">
       <head>
-        {/* Two guards that must run before the first paint.
-            no-js: reveal-on-scroll ships with inline opacity:0 from the server,
-            so if the bundle never runs this class keeps the content visible.
-            boot-seen: hides the opening sequence for a visitor who has already
-            watched it this session, with no flash of it first. */}
+        {/* Must run before the first paint: reveal-on-scroll ships with inline
+            opacity:0 from the server, so if the bundle never runs this class
+            keeps the content visible. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* A stylesheet link, not a CSS @import: @import is only discovered
@@ -67,8 +65,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" />
         <script
           dangerouslySetInnerHTML={{
-            __html:
-              "var d=document.documentElement;d.classList.remove('no-js');try{if(sessionStorage.getItem('imjai-intro-seen')==='1')d.classList.add('boot-seen')}catch(e){}",
+            __html: "document.documentElement.classList.remove('no-js');",
           }}
         />
       </head>

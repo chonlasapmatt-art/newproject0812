@@ -17,10 +17,12 @@ import {
   Wallet,
   X,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { CATEGORIES } from '../lib/catalog';
 import { isEdited, readOverrides, resetMenuItem, updateMenuItem, useMenu } from '../lib/menu-admin';
+import { rise } from '../lib/motion';
 import {
   ORDER_FLOW,
   ORDER_STATUS_LABEL,
@@ -544,11 +546,15 @@ export function AdminDashboard() {
           </p>
         )}
 
-        {tab === 'overview' && <Overview orders={orders} />}
-        {tab === 'orders' && <Orders orders={orders} />}
-        {tab === 'menu' && <MenuManager />}
-        {tab === 'customers' && <Customers orders={orders} />}
-        {tab === 'settings' && <StoreSettings />}
+        <AnimatePresence mode="wait">
+          <motion.div key={tab} {...rise}>
+            {tab === 'overview' && <Overview orders={orders} />}
+            {tab === 'orders' && <Orders orders={orders} />}
+            {tab === 'menu' && <MenuManager />}
+            {tab === 'customers' && <Customers orders={orders} />}
+            {tab === 'settings' && <StoreSettings />}
+          </motion.div>
+        </AnimatePresence>
       </section>
     </main>
   );

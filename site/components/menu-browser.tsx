@@ -1,10 +1,11 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Check, ChevronDown, Minus, Plus, Search, SlidersHorizontal, Star, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { CATEGORIES, type MenuCategory, type MenuItem } from '../lib/catalog';
+import { settle } from '../lib/motion';
 import { useMenu, useMenuItem } from '../lib/menu-admin';
 import { Tilt } from './tilt';
 import { useAddToCart } from '../lib/add-to-cart';
@@ -42,29 +43,28 @@ export function MenuBrowser() {
       <div className="category-tabs" role="tablist" aria-label="หมวดหมู่เมนู">{CATEGORIES.map((item) => <button role="tab" aria-selected={category === item.id} className={category === item.id ? 'active' : ''} onClick={() => setCategory(item.id)} key={item.id}>{item.label}</button>)}</div>
       <section className="catalog-section">
         <div className="catalog-heading"><p>พบ <b>{items.length}</b> เมนู</p><span>ข้อมูลสินค้าและสต็อกล่าสุด</span></div>
-        {items.length ? <div className="catalog-grid">{items.map((item, index) => <Tilt key={item.sku} strength={7} lift={12}><motion.article className={`catalog-card ${!item.available ? 'sold-out' : ''}`} key={item.sku} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 8) * .035 }}>
+        {items.length ? <div className="catalog-grid"><AnimatePresence mode="popLayout">{items.map((item, index) => <Tilt key={item.sku} strength={7} lift={12}><motion.article layout className={`catalog-card ${!item.available ? 'sold-out' : ''}`} key={item.sku} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10, transition: { duration: 0.16 } }} transition={{ delay: Math.min(index, 8) * .035 }}>
           <button className={`catalog-art ${item.tone}`} onClick={() => setSelectedSku(item.sku)} disabled={!item.available} aria-label={`ดูรายละเอียด ${item.name}`}><span>{item.emoji}</span>{item.chefChoice && <em><Star size={12} fill="currentColor" /> Chef&apos;s Choice</em>}{!item.available && <b>หมดวันนี้</b>}<small>เหลือ {item.stock}</small></button>
           <div className="catalog-copy"><p>{CATEGORIES.find((categoryItem) => categoryItem.id === item.category)?.label}</p><div className="catalog-title"><h2>{item.name}</h2><b>฿{item.price}</b></div><span>{item.description}</span>{item.allergens.length > 0 && <small>สารก่อภูมิแพ้: {item.allergens.join(', ')}</small>}<button disabled={!item.available} onClick={() => setSelectedSku(item.sku)}>{item.available ? 'เลือกตัวเลือก' : 'สินค้าหมด'} <Plus size={16} /></button></div>
-        </motion.article></Tilt>)}</div> : <div className="no-results"><span>🔎</span><h2>ยังไม่พบเมนูที่ค้นหา</h2><p>ลองเปลี่ยนคำค้นหรือเลือกหมวดหมู่อื่นนะคะ</p></div>}
+        </motion.article></Tilt>)}</AnimatePresence></div> : <div className="no-results"><span>🔎</span><h2>ยังไม่พบเมนูที่ค้นหา</h2><p>ลองเปลี่ยนคำค้นหรือเลือกหมวดหมู่อื่นนะคะ</p></div>}
       </section>
-      <ProductModal key={selected?.sku ?? 'none'} item={selected} onClose={() => setSelectedSku(null)} />
+      <AnimatePresence>{selected && <ProductModal key={selected.sku} item={selected} onClose={() => setSelectedSku(null)} />}</AnimatePresence>
     </main>
   );
 }
 
-function ProductModal({ item, onClose }: { item: MenuItem | null; onClose: () => void }) {
+function ProductModal({ item, onClose }: { item: MenuItem; onClose: () => void }) {
   const addToCart = useAddToCart();
   const [quantity, setQuantity] = useState(1);
-  const [options, setOptions] = useState<Record<string, string>>(() => Object.fromEntries((item?.options ?? []).map((group) => [group.label, group.values[0]])));
+  const [options, setOptions] = useState<Record<string, string>>(() => Object.fromEntries((item.options ?? []).map((group) => [group.label, group.values[0]])));
   const [addOns, setAddOns] = useState<string[]>([]);
   const [note, setNote] = useState('');
 
-  if (!item) return null;
   const selectedAddOns = (item.addOns ?? []).filter((addOn) => addOns.includes(addOn.name));
   const eachPrice = item.price + selectedAddOns.reduce((sum, addOn) => sum + addOn.price, 0);
   const submit = () => { addToCart({ sku: item.sku, name: item.name, unitPrice: item.price, quantity, options: Object.values(options), addOns: selectedAddOns, note: note.trim().slice(0, 160), emoji: item.emoji }); onClose(); };
 
-  return <><motion.button className="modal-backdrop" aria-label="ปิดรายละเอียดเมนู" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} /><motion.section className="product-modal" role="dialog" aria-modal="true" aria-label={`รายละเอียด ${item.name}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+  return <><motion.button className="modal-backdrop" aria-label="ปิดรายละเอียดเมนู" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /><motion.section className="product-modal" role="dialog" aria-modal="true" aria-label={`รายละเอียด ${item.name}`} {...settle} exit={{ opacity: 0, y: 12, scale: 0.99, transition: { duration: 0.18 } }}>
     <button className="modal-close" onClick={onClose} aria-label="ปิด"><X /></button>
     <div className={`product-modal-art ${item.tone}`}><span>{item.emoji}</span>{item.chefChoice && <em><Star size={13} fill="currentColor" /> Chef&apos;s Choice</em>}</div>
     <div className="product-modal-copy"><p className="eyebrow">{item.sku}</p><div className="modal-title"><h2>{item.name}</h2><b>฿{item.price}</b></div><p>{item.description}</p><details><summary>ส่วนประกอบและสารก่อภูมิแพ้</summary><p>{item.ingredients}</p><small>{item.allergens.length ? `มี: ${item.allergens.join(', ')}` : 'ไม่ระบุสารก่อภูมิแพ้หลัก'}</small></details>
