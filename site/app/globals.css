@@ -362,8 +362,11 @@ button { color: inherit; }
    the heading's metrics exactly where they were. */
 /* The mask needs clearance for marks in both directions — see RevealLines.
    Widened along with the line-height so a tall stack like ื้ is never clipped. */
-.reveal-line { display: block; overflow: hidden; padding: .2em 0 .12em; margin: -.2em 0 -.12em; }
-.reveal-line > span { display: inline-block; will-change: transform; }
+/* No overflow, no padding trick, nothing that can crop a glyph. Thai puts
+   marks above and below the letter, and every version of this rule that
+   clipped to the line box eventually cut one off. */
+.reveal-line { display: block; }
+.reveal-line > span { display: inline-block; will-change: transform, opacity; }
 
 /* A rule that arrives with the section it separates. */
 .section-divider { width: min(78%, 620px); height: 1px; margin: 8px auto; background: linear-gradient(90deg, transparent, var(--orange), transparent); transform-origin: center; }
@@ -1457,7 +1460,7 @@ h1, h2, h3, .hero h1, .brand b {
   font-weight: 600;
   text-wrap: pretty;
 }
-.fact-value { font-size: 22px; letter-spacing: -.01em; }
+.fact-value { font-size: 22px; letter-spacing: 0; }
 
 /* The footer sat at the edge of readable on the dark ground. */
 .site-footer span, .site-footer a { color: rgba(247, 240, 229, .82); }
