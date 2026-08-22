@@ -3,7 +3,8 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { Check, ChevronDown, Minus, Plus, Search, SlidersHorizontal, Star, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import { CATEGORIES, type MenuCategory, type MenuItem } from '../lib/catalog';
 import { settle } from '../lib/motion';
 import { useMenu, useMenuItem } from '../lib/menu-admin';
@@ -48,9 +49,36 @@ export function MenuBrowser() {
           <div className="catalog-copy"><p>{CATEGORIES.find((categoryItem) => categoryItem.id === item.category)?.label}</p><div className="catalog-title"><h2>{item.name}</h2><b>฿{item.price}</b></div><span>{item.description}</span>{item.allergens.length > 0 && <small>สารก่อภูมิแพ้: {item.allergens.join(', ')}</small>}<button disabled={!item.available} onClick={() => setSelectedSku(item.sku)}>{item.available ? 'เลือกตัวเลือก' : 'สินค้าหมด'} <Plus size={16} /></button></div>
         </motion.article></Tilt>)}</AnimatePresence></div> : <div className="no-results"><span>🔎</span><h2>ยังไม่พบเมนูที่ค้นหา</h2><p>ลองเปลี่ยนคำค้นหรือเลือกหมวดหมู่อื่นนะคะ</p></div>}
       </section>
-      <AnimatePresence>{selected && <ProductModal key={selected.sku} item={selected} onClose={() => setSelectedSku(null)} />}</AnimatePresence>
+      <ModalLayer>
+        <AnimatePresence>{selected && <ProductModal key={selected.sku} item={selected} onClose={() => setSelectedSku(null)} />}</AnimatePresence>
+      </ModalLayer>
     </main>
   );
+}
+
+/**
+ * `main` is lifted above the paper grain with `position: relative; z-index: 1`,
+ * and that makes it a stacking context: anything inside it is sealed under
+ * z-index 1 no matter how high its own z-index is. The dish sheet asks for 70
+ * and still ended up beneath the chat button at 39.
+ *
+ * A portal to `document.body` is the fix, and it is the right shape for a
+ * modal anyway — an overlay belongs to the viewport, not to the section of
+ * the page that happened to open it.
+ *
+ * The subscribe callback never fires because the answer never changes; this is
+ * only asking React which pass we are in, so the server renders the sheet
+ * inline and the client moves it to the body on hydration.
+ */
+const noop = () => () => {};
+
+function ModalLayer({ children }: { children: React.ReactNode }) {
+  const onClient = useSyncExternalStore(noop, () => true, () => false);
+  if (!onClient) return null;
+  // The layer does the centring. Auto margins on the sheet itself left it
+  // eight pixels high, because its height comes from a max-height cap rather
+  // than a definite value and the margin equation has nothing to split.
+  return createPortal(<div className="modal-layer">{children}</div>, document.body);
 }
 
 function ProductModal({ item, onClose }: { item: MenuItem; onClose: () => void }) {

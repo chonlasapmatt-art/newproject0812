@@ -450,7 +450,22 @@ button { color: inherit; }
 .catalog-copy > button { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--coffee); background: transparent; cursor: pointer; color: var(--coffee); font-size: 11px; font-weight: 750; }
 .catalog-copy > button:hover { background: var(--coffee); color: white; }
 .catalog-copy > button:disabled { border-color: var(--line); color: #9b8e86; cursor: not-allowed; }
-.product-modal { position: fixed; z-index: 70; left: 50%; top: 50%; transform: translate(-50%,-50%); width: min(980px,calc(100vw - 30px)); max-height: min(740px,calc(100vh - 30px)); display: grid; grid-template-columns: .9fr 1.1fr; overflow: hidden; background: var(--paper); box-shadow: 0 30px 90px rgba(49,30,21,.28); }
+/* The sheet is centred by its layer, not by itself.
+
+   Two earlier attempts failed for reasons worth recording. A translate is out
+   because Motion owns the inline `transform` while it animates the sheet in,
+   and an inline transform beats the stylesheet — the centring silently became
+   `transform: none` and the sheet hung off its own top-left corner at 50%/50%.
+   Auto margins are out because the sheet's height comes from a max-height cap
+   rather than a definite value, so the margin equation had nothing to split
+   and left it sitting eight pixels high.
+
+   A grid layer has neither problem: it centres a child of any height without
+   touching transform. */
+.modal-layer { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; pointer-events: none; }
+.modal-layer > * { pointer-events: auto; }
+/* Above the backdrop, which sits in the same layer at 60. */
+.product-modal { position: relative; z-index: 70; width: min(980px,calc(100vw - 30px)); max-height: min(740px,calc(100vh - 30px)); display: grid; grid-template-columns: .9fr 1.1fr; overflow: hidden; background: var(--paper); box-shadow: 0 30px 90px rgba(49,30,21,.28); }
 .modal-close { position: absolute; z-index: 5; right: 14px; top: 14px; width: 42px; height: 42px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255,255,255,.86); cursor: pointer; }
 .product-modal-art { min-height: 620px; position: relative; display: grid; place-items: center; }
 .product-modal-art > span { font-size: min(15vw,210px); }
@@ -1371,10 +1386,18 @@ body::before {
   opacity: .32;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.055'/%3E%3C/svg%3E");
 }
-/* Everything the visitor interacts with sits above the grain. */
-.site-header, main, .site-footer, .cart-drawer, .drawer-backdrop,
-.product-modal, .modal-backdrop, .boot, .account-panel { position: relative; z-index: 1; }
-.site-header { z-index: 20; }
+/* The grain is a fixed layer at z-index 0, which paints above ordinary
+   in-flow content. Page content therefore has to be lifted over it.
+
+   Only content that is genuinely in normal flow belongs in this list. Every
+   overlay — the header, the drawers, the modal, the opening, the account
+   menu — already positions itself with a z-index of its own, and naming one
+   here overwrites that: `position: relative` drops it out of the viewport
+   layer and back into the document, where a sticky toolbar can cover it and
+   `left/top: 50%` no longer centre anything. That is exactly what happened to
+   the product sheet, the cart drawer, the account menu and the opening
+   sequence, all from this one rule. */
+main, .site-footer { position: relative; z-index: 1; }
 
 /* Section headings earn a mark of their own rather than floating loose. */
 .section-heading .eyebrow::before,
