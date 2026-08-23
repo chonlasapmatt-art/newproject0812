@@ -115,6 +115,7 @@ export function HomePage() {
         ].map((item, index) => (
           <motion.span
             key={item.text}
+            data-reveal
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -167,6 +168,7 @@ export function HomePage() {
           {categories.map((category, index) => (
             <Tilt key={category.name} strength={4} lift={4} sheen={false}>
               <motion.div
+                data-reveal
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -196,6 +198,7 @@ export function HomePage() {
               element's transform is how an entrance silently stops
               finishing. */}
           <motion.span
+            data-reveal
             initial={{ opacity: 0, x: -60 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: '0px 0px -80px 0px' }}
@@ -204,6 +207,7 @@ export function HomePage() {
             <motion.span animate={motionOK ? { y: [0, -7, 0] } : { y: 0 }} transition={drift(3.6)} style={{ display: 'inline-block' }}>☕</motion.span>
           </motion.span>
           <motion.b
+            data-reveal
             initial={{ opacity: 0, scale: 0.5 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, margin: '0px 0px -80px 0px' }}
@@ -212,6 +216,7 @@ export function HomePage() {
             +
           </motion.b>
           <motion.span
+            data-reveal
             initial={{ opacity: 0, x: 60 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: '0px 0px -80px 0px' }}
@@ -226,6 +231,7 @@ export function HomePage() {
       <section className="story-section" id="story">
         <motion.div
           className="story-art"
+          data-reveal
           initial={{ opacity: 0, x: -30 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true, margin: '0px 0px -100px 0px' }}
@@ -249,6 +255,7 @@ export function HomePage() {
           {DEMO_REVIEWS.map((review, index) => (
             <motion.article
               key={review.name}
+              data-reveal
               initial={{ opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '0px 0px -60px 0px' }}
@@ -264,10 +271,10 @@ export function HomePage() {
       </section>
 
       <section className="visit-section" id="location">
-        <motion.div initial={{ opacity: 0, scale: 0.97 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true, margin: '0px 0px -80px 0px' }} transition={{ duration: motionOK ? 0.5 : 0.01, ease: EASE.enter }}>
+        <motion.div data-reveal initial={{ opacity: 0, scale: 0.97 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true, margin: '0px 0px -80px 0px' }} transition={{ duration: motionOK ? 0.5 : 0.01, ease: EASE.enter }}>
           <StoreMap className="visit-map" />
         </motion.div>
-        <motion.div className="visit-copy" initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '0px 0px -80px 0px' }} transition={{ duration: motionOK ? 0.5 : 0.01, delay: motionOK ? 0.1 : 0, ease: EASE.enter }}><p className="eyebrow">COME SAY HELLO</p><RevealLines as="h2" lines={['แวะมาพักใจ', 'แล้วทานอะไรอร่อย ๆ']} /><dl><div><dt><MapPin /></dt><dd><b>ที่ตั้งร้าน</b><span>{STORE.address}</span></dd></div><div><dt><Clock3 /></dt><dd><b>เวลาเปิด–ปิด</b><span>{STORE.hours}</span></dd></div></dl><a className="primary-button" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(STORE.address)}`} target="_blank" rel="noreferrer">เปิดแผนที่ <ArrowRight size={17} /></a></motion.div>
+        <motion.div className="visit-copy" data-reveal initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '0px 0px -80px 0px' }} transition={{ duration: motionOK ? 0.5 : 0.01, delay: motionOK ? 0.1 : 0, ease: EASE.enter }}><p className="eyebrow">COME SAY HELLO</p><RevealLines as="h2" lines={['แวะมาพักใจ', 'แล้วทานอะไรอร่อย ๆ']} /><dl><div><dt><MapPin /></dt><dd><b>ที่ตั้งร้าน</b><span>{STORE.address}</span></dd></div><div><dt><Clock3 /></dt><dd><b>เวลาเปิด–ปิด</b><span>{STORE.hours}</span></dd></div></dl><a className="primary-button" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(STORE.address)}`} target="_blank" rel="noreferrer">เปิดแผนที่ <ArrowRight size={17} /></a></motion.div>
       </section>
     </main>
   );
