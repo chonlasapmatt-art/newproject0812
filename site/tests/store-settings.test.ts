@@ -5,13 +5,24 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
  * What the shop saved has to win over what the build shipped — but only where
  * they actually typed something. A blank field must not wipe out the fallback.
  */
-async function boot(options: { configured: boolean; row?: Record<string, string | null> | null; buildId?: string }) {
-  const { configured, row = null, buildId = '' } = options;
+async function boot(options: {
+  configured: boolean;
+  row?: Record<string, string | null> | null;
+  buildId?: string;
+  /** Rows the update returns: none is what a blocked write looks like. */
+  rowsBack?: { id: boolean }[];
+}) {
+  const { configured, row = null, buildId = '', rowsBack = [{ id: true }] } = options;
   vi.resetModules();
   vi.stubEnv('NEXT_PUBLIC_LINE_OA_ID', buildId);
   vi.stubEnv('NEXT_PUBLIC_LINE_OA_LINK', '');
 
-  const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+  const update = vi.fn().mockReturnValue({
+    eq: vi.fn().mockReturnValue({
+      // What Postgres returns for an update row-level security allowed.
+      select: vi.fn().mockResolvedValue({ data: rowsBack, error: null }),
+    }),
+  });
   vi.doMock('../lib/supabase', () => ({
     isSupabaseConfigured: configured,
     supabase: configured
@@ -66,8 +77,21 @@ describe('shop settings', () => {
     );
   });
 
-  it('reports failure rather than pretending to save with no database', async () => {
+  it('reports there is nowhere to save rather than pretending', async () => {
     const { mod } = await boot({ configured: false });
-    expect(await mod.saveStoreSettings({ lineOaId: '@imjai' })).toBe(false);
+    expect(await mod.saveStoreSettings({ lineOaId: '@imjai' })).toBe('no-database');
+  });
+
+  it('says saved when the row comes back', async () => {
+    const { mod } = await boot({ configured: true });
+    expect(await mod.saveStoreSettings({ phone: '02-000-0000' })).toBe('saved');
+  });
+
+  // The bug this exists for: Postgres answers an update that row-level
+  // security filtered out with no error and no rows. Read as success, it told
+  // the shop their phone number was saved while nothing had changed.
+  it('does not call a write the database refused a success', async () => {
+    const { mod } = await boot({ configured: true, rowsBack: [] });
+    expect(await mod.saveStoreSettings({ phone: '02-000-0000' })).toBe('not-allowed');
   });
 });

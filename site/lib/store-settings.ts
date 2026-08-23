@@ -90,11 +90,27 @@ export function useStoreSettings(): StoreSettings {
   return useSyncExternalStore(subscribe, snapshot, serverSnapshot);
 }
 
-/** Save from the dashboard. Row-level security is what decides if it lands. */
-export async function saveStoreSettings(next: Partial<StoreSettings>): Promise<boolean> {
-  if (!isSupabaseConfigured || !supabase) return false;
+/**
+ * What happened when the shop pressed save.
+ *
+ * More than a boolean because the two ways this fails need different answers.
+ * A blocked write means the account is not staff and the fix is to be promoted;
+ * a failed one means the request did not land and the fix is to try again.
+ */
+export type SaveResult = 'saved' | 'not-allowed' | 'no-database' | 'failed';
+
+/**
+ * Save from the dashboard. Row-level security is what decides if it lands.
+ *
+ * The row is asked for back. Postgres answers an update that row-level
+ * security filtered out with no error and no rows — so without this, a write
+ * the database refused reported success, and the shop was told their phone
+ * number was saved when nothing had changed.
+ */
+export async function saveStoreSettings(next: Partial<StoreSettings>): Promise<SaveResult> {
+  if (!isSupabaseConfigured || !supabase) return 'no-database';
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('store_settings')
       .update({
         line_oa_id: next.lineOaId?.trim() || null,
@@ -103,12 +119,18 @@ export async function saveStoreSettings(next: Partial<StoreSettings>): Promise<b
         address: next.address?.trim() || null,
         hours: next.hours?.trim() || null,
       })
-      .eq('id', true);
-    if (error) return false;
-    current = { ...current, ...next } as StoreSettings;
-    announce();
-    return true;
+      .eq('id', true)
+      .select('id');
+
+    if (error) return 'failed';
+    if (!data || data.length === 0) return 'not-allowed';
+
+    // Read back rather than trusting the local merge: what the shop sees after
+    // saving should be what the database actually holds, including anything a
+    // trigger changed on the way in.
+    await load();
+    return 'saved';
   } catch {
-    return false;
+    return 'failed';
   }
 }

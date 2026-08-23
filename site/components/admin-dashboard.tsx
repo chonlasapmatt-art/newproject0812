@@ -45,7 +45,7 @@ import { AdminSales } from './admin-sales';
 import { AdminUpdates } from './admin-updates';
 import { lineBasicId, lineChatUrl } from '../lib/line-oa';
 import { isN8nConfigured } from '../lib/n8n';
-import { saveStoreSettings, useStoreSettings } from '../lib/store-settings';
+import { saveStoreSettings, useStoreSettings, type SaveResult } from '../lib/store-settings';
 import { ImJaiMark } from './brand-logo';
 
 /**
@@ -516,7 +516,7 @@ function ConnectionRows() {
 function EditableShopDetails() {
   const settings = useStoreSettings();
   const [draft, setDraft] = useState(settings);
-  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
+  const [state, setState] = useState<'idle' | 'saving' | SaveResult>('idle');
   const [touched, setTouched] = useState(false);
 
   // Until the shop starts typing, follow whatever the database reports; the
@@ -531,9 +531,20 @@ function EditableShopDetails() {
 
   const save = async () => {
     setState('saving');
-    const ok = await saveStoreSettings(shown);
-    setState(ok ? 'saved' : 'failed');
-    if (ok) setTouched(false);
+    const result = await saveStoreSettings(shown);
+    setState(result);
+    // Only stop following the database once the database actually has it.
+    if (result === 'saved') setTouched(false);
+  };
+
+  // Each failure has a different fix, so each gets its own sentence. "Save
+  // failed" sent the shop looking at their typing when the answer was that
+  // their account is not staff yet.
+  const WHY: Record<Exclude<SaveResult, 'saved'>, string> = {
+    'not-allowed':
+      'ฐานข้อมูลปฏิเสธการบันทึก — บัญชีนี้ยังไม่ใช่แอดมิน ให้รัน supabase/make-admin.sql ด้วยอีเมลนี้ แล้วออกจากระบบและเข้าใหม่',
+    'no-database': 'ยังไม่ได้เชื่อม Supabase จึงไม่มีที่ให้บันทึก',
+    failed: 'ส่งข้อมูลไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง',
   };
 
   return (
@@ -573,7 +584,9 @@ function EditableShopDetails() {
               {state === 'saving' ? 'กำลังบันทึก…' : 'บันทึก'}
             </button>
             {state === 'saved' && <span className="settings-ok">บันทึกแล้ว</span>}
-            {state === 'failed' && <span className="settings-bad">บันทึกไม่สำเร็จ — ต้องเข้าสู่ระบบด้วยบัญชีแอดมิน</span>}
+            {state !== 'idle' && state !== 'saving' && state !== 'saved' && (
+              <span className="settings-bad">{WHY[state]}</span>
+            )}
           </div>
         </>
       )}
