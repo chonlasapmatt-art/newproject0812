@@ -54,6 +54,14 @@
 }
 
 * { box-sizing: border-box; }
+/* Form controls do not inherit text colour from their parent the way normal
+   elements do — the browser gives them its own default instead, usually
+   black. That default sat unnoticed through every theme change because it
+   happened to still read fine on the light backgrounds it started on; the
+   ones with a dark background (dark mode, most of all) were left with black
+   text on a near-black field, which reads as an empty box until you know to
+   look for the caret. */
+input, textarea, select { color: inherit; }
 html { scroll-behavior: smooth; }
 body {
   margin: 0;
@@ -679,7 +687,7 @@ button { color: inherit; }
 .menu-toolbar { position: sticky; top: 78px; z-index: 20; padding: 14px 5vw; display: flex; justify-content: center; gap: 12px; border-bottom: 1px solid var(--line); background: rgba(255,253,248,.94); backdrop-filter: blur(12px); }
 .search-box, .sort-box { min-height: 46px; padding: 0 14px; display: flex; align-items: center; gap: 9px; border: 1px solid var(--line); background: var(--surface); }
 .search-box { width: min(540px, 100%); }
-.search-box input { min-width: 0; flex: 1; border: 0; outline: 0; }
+.search-box input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; }
 .search-clear { flex: 0 0 auto; width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 999px; background: transparent; color: var(--ink-muted); cursor: pointer; }
 .search-clear:hover { background: var(--cream); color: var(--ink); }
 .sort-box select { appearance: none; min-width: 135px; border: 0; outline: 0; background: transparent; font-size: 11px; }

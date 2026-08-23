@@ -121,13 +121,42 @@ async function hasVisibleText(locator: import('@playwright/test').Locator) {
       return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
     };
 
-    const luminances: number[] = [];
-    for (let i = 0; i < data.length; i += 4) luminances.push(relativeLuminance([data[i], data[i + 1], data[i + 2]]));
-    luminances.sort((a, b) => a - b);
-    const darkest = luminances[Math.floor(luminances.length * 0.05)];
-    const lightest = luminances[Math.ceil(luminances.length * 0.95) - 1];
-    const ratio = (Math.max(lightest, darkest) + 0.05) / (Math.min(lightest, darkest) + 0.05);
-    return ratio > 1.8; // glyphs are a small share of the box; a real ratio reads far above this
+    // Neither a trimmed percentile nor the true extremes works here. A
+    // password field's dots are a small enough share of the box that
+    // trimming the extremes (meant to ignore antialiasing noise) trims the
+    // dots away with it; the true min and max go the other way and catch a
+    // single antialiased pixel at a glyph's edge even when the glyph itself
+    // is unreadable — which is exactly the shape of the bug this exists to
+    // catch: near-black text on a near-black field is not pure black on
+    // pure black, it is close enough that only its edges show at all.
+    //
+    // So this asks a different question: ignoring the background colour
+    // itself (the single most common tone, found the same way a flood-fill
+    // would), is there a real cluster of pixels that reads as a distinct
+    // tone from it — not one stray antialiased dot, but enough pixels that
+    // it has to be an actual glyph? The histogram buckets luminance into 40
+    // steps; the background owns whichever bucket most of the box agrees on.
+    const buckets = new Array(40).fill(0);
+    const luminances = new Float64Array(data.length / 4);
+    for (let i = 0, n = 0; i < data.length; i += 4, n += 1) {
+      const l = relativeLuminance([data[i], data[i + 1], data[i + 2]]);
+      luminances[n] = l;
+      buckets[Math.min(39, Math.floor(l * 40))] += 1;
+    }
+    const backgroundBucket = buckets.indexOf(Math.max(...buckets));
+    const backgroundLuminance = (backgroundBucket + 0.5) / 40;
+
+    // A pixel counts as ink once it clears a real contrast margin from the
+    // background tone — comfortably past antialiasing noise, well short of
+    // the polish a design would actually aim for.
+    let inkPixels = 0;
+    for (const l of luminances) {
+      const ratio = (Math.max(l, backgroundLuminance) + 0.05) / (Math.min(l, backgroundLuminance) + 0.05);
+      if (ratio > 2.2) inkPixels += 1;
+    }
+    // A stray antialiased edge is a handful of pixels; an actual glyph —
+    // even a password field's dots — is not.
+    return inkPixels > luminances.length * 0.003;
   }, png.toString('base64'));
 }
 
@@ -163,4 +192,30 @@ test.describe('fixed-light panels stay readable in dark mode', () => {
     await page.waitForTimeout(600);
     expect(await hasVisibleText(badge)).toBe(true);
   });
+});
+
+/**
+ * Form fields keep their typed text visible in every theme.
+ *
+ * Browsers give `input`/`textarea`/`select` their own default text colour
+ * rather than inheriting one, so a themed background with no themed text
+ * colour to match runs the same failure as the fixed-light panels above, just
+ * inverted: dark mode's default text colour never gets a chance to apply, and
+ * the browser's own default — black — sits on the field's now-dark
+ * background. Password fields make it hardest to notice, because the dots
+ * that stand in for the characters are exactly the thing that goes missing.
+ */
+test('typed text is visible in a themed input in dark mode', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/account');
+  await page.waitForLoadState('networkidle');
+  await page.getByRole('button', { name: 'สมัครสมาชิก' }).click();
+
+  const password = page.locator('input[type="password"]');
+  await password.fill('checking-visibility');
+  expect(await hasVisibleText(password)).toBe(true);
+
+  const email = page.locator('input[type="email"]');
+  await email.fill('checking@example.com');
+  expect(await hasVisibleText(email)).toBe(true);
 });

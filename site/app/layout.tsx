@@ -2,8 +2,12 @@ import type { Metadata } from 'next';
 import { SiteShell } from '../components/site-shell';
 import './globals.css';
 
+// Set by the deploy workflow to this repository's real GitHub Pages address;
+// the fallback only matters for a local build run without it.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://chonlasapmatt-art.github.io/newproject0812';
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://imjai-cafe-kitchen-bangkok.edtech4.chatgpt.site'),
+  metadataBase: new URL(SITE_URL),
   title: 'ImJai Cafe & Kitchen — อิ่มใจ คาเฟ่ & ครัว',
   description: 'อาหาร กาแฟ และขนมอบสดใหม่ พร้อมรับที่ร้านหรือจัดส่งจาก ImJai Cafe & Kitchen',
   applicationName: 'ImJai Cafe & Kitchen',
@@ -15,7 +19,7 @@ export const metadata: Metadata = {
     siteName: 'ImJai Cafe & Kitchen',
     title: 'ImJai Cafe & Kitchen — มื้อธรรมดา ที่ทำให้ใจอิ่ม',
     description: 'อาหาร กาแฟ และขนมอบสดใหม่ พร้อมรับที่ร้านหรือจัดส่ง',
-    url: 'https://imjai-cafe-kitchen-bangkok.edtech4.chatgpt.site',
+    url: SITE_URL,
     images: [{ url: '/og.png', width: 1200, height: 630, alt: 'ImJai Cafe & Kitchen — มื้อธรรมดา ที่ทำให้ใจอิ่ม' }],
   },
   twitter: {
@@ -33,8 +37,8 @@ const restaurantJsonLd = {
   alternateName: 'อิ่มใจ คาเฟ่ & ครัว',
   servesCuisine: ['Thai', 'Cafe', 'Bakery'],
   priceRange: '฿฿',
-  url: 'https://imjai-cafe-kitchen-bangkok.edtech4.chatgpt.site',
-  image: 'https://imjai-cafe-kitchen-bangkok.edtech4.chatgpt.site/og.png',
+  url: SITE_URL,
+  image: `${SITE_URL}/og.png`,
   telephone: '+66-99-875-6879',
   address: {
     '@type': 'PostalAddress',
