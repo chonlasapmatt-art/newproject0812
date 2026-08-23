@@ -123,14 +123,20 @@ jobs:
         # old fork), the link an email carries goes nowhere useful, no
         # matter how correct the site itself is.
         #
-        # Read before writing, and only the two fields this cares about are
-        # touched: this API takes a full config document rather than a true
-        # partial patch in every version this has to keep working against,
-        # so blindly posting a two-field object risks resetting whatever
-        # else is already configured (enabled providers, mailer settings,
-        # session lifetimes) to their defaults. The redirect list is a set
-        # the shop may already be adding to by hand — appended to, never
-        # replaced, so this can run on every deploy without undoing that.
+        # Read first, but only to fold the site into the existing redirect
+        # list rather than replace it — the write itself sends just the two
+        # fields this step owns, nothing echoed back from the read.
+        #
+        # The first version of this step sent the whole document PATCH got
+        # back from GET, reasoning that a partial body might reset whatever
+        # else is configured to defaults. That reasoning was backwards: GET
+        # returns SMTP fields at their current values, PATCH cross-validates
+        # them against each other, and echoing them back tripped a rule
+        # that GET cannot satisfy on its own (SMTP_PASS in particular is
+        # never handed back by a read, for the obvious reason) — a real
+        # deploy failed on exactly this. A true partial update, touching
+        # only site_url and uri_allow_list, is both simpler and what
+        # actually works.
         run: |
           set -euo pipefail
 
@@ -151,17 +157,16 @@ jobs:
             exit 1
           fi
 
-          updated=$(jq --arg site "$SITE_URL" '
-            .site_url = $site
-            | ((.uri_allow_list // "") | split(",") | map(select(length > 0))) as $existing
-            | .uri_allow_list = (($existing + [$site + "/**"]) | unique | join(","))
-          ' <<< "$body")
+          patch=$(jq -n --arg site "$SITE_URL" --argjson existing \
+            "$(jq '((.uri_allow_list // "") | split(",") | map(select(length > 0)))' <<< "$body")" '
+            { site_url: $site, uri_allow_list: (($existing + [$site + "/**"]) | unique | join(",")) }
+          ')
 
           result=$(curl -sS -o response.json -w '%{http_code}' \
             -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "$updated")
+            -d "$patch")
 
           if [ "$result" != "200" ]; then
             echo "::error::updating the Auth config failed (HTTP $result)"
