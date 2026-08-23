@@ -316,7 +316,6 @@ button { color: inherit; }
 .cart-summary .discount { color: var(--sage); }
 .cart-summary .cart-total, .order-summary .summary-total { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); font-family: var(--font-display); font-size: 21px; }
 .checkout-button, .place-order, .auth-submit, .add-cart-button { width: 100%; min-height: 52px; border: 0; border-radius: 999px; background: var(--orange); color: white; display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer; font-weight: 750; }
-.checkout-button span { margin-left: auto; }
 .secure-note { display: flex; align-items: flex-start; justify-content: center; gap: 7px; margin: 12px 0 0; color: #806f65; text-align: center; font-size: 9px; line-height: 1.5; }
 .secure-note svg { flex: 0 0 auto; width: 14px; height: 14px; }
 .empty-cart, .checkout-empty, .track-empty, .track-prompt, .no-results { margin: auto; max-width: 350px; padding: 40px 24px; text-align: center; }
