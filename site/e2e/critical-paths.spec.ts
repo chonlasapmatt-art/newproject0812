@@ -118,3 +118,33 @@ test('the account menu switches between the customer and shop views', async ({ p
   await openMenu();
   await expect(page.getByRole('menuitem', { name: /แดชบอร์ดร้าน/ })).toHaveCount(0);
 });
+
+/**
+ * The shop dropped its ฿100 minimum entirely — sell one croissant if that is
+ * all someone wants. Both halves of that promise are covered: the button on
+ * the page has to accept a small order, and the database function checkout
+ * actually calls has to accept it too. A basket built from the catalogue's
+ * cheapest single item, with nothing else in it, is the honest test of that —
+ * padding it with a second dish would let a regression in either place hide
+ * behind the other item's price.
+ */
+test('a basket under the old ฿100 minimum can still be placed', async ({ page }) => {
+  await signIn(page);
+  await page.goto('/menu');
+  await page.waitForLoadState('networkidle');
+
+  const cheapest = page.locator('.catalog-card', { hasText: 'ครัวซองต์เนยสด' });
+  await expect(cheapest).toBeVisible();
+  await cheapest.getByRole('button', { name: /เลือกตัวเลือก/ }).click();
+  await expect(page.locator('.product-modal')).toBeVisible();
+  await page.getByRole('button', { name: /เพิ่มลงตะกร้า/ }).click();
+
+  await page.goto('/checkout');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('.summary-total dd')).toHaveText('฿55');
+
+  // No leftover warning, and the button reads ready-to-submit rather than
+  // disabled — this is what the old minimum used to block.
+  await expect(page.getByText(/ยอดสั่งซื้อขั้นต่ำ/)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /ยืนยันออเดอร์/ })).toBeEnabled();
+});

@@ -17,7 +17,9 @@ test('the facts strip quotes the shop settings, not written-in numbers', async (
 
   const strip = page.getByLabel('ข้อมูลร้านโดยย่อ');
   await expect(strip).toContainText('฿300');
-  await expect(strip).toContainText('฿100');
+  // There is no minimum any more — that line reads "ไม่มีขั้นต่ำ" now, so the
+  // fact this quotes is the one the shop actually removed, not an amount.
+  await expect(strip).toContainText('ไม่มีขั้นต่ำ');
   await expect(strip).toContainText('07:00 – 20:00');
 });
 

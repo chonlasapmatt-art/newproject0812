@@ -24,7 +24,7 @@ const FACTS = [
   { icon: Clock3, label: 'เปิดทุกวัน', value: hours.everyday, hint: `ครัวปิดรับ ${hours.kitchenLastOrder}` },
   { icon: UtensilsCrossed, label: 'ปรุงเสร็จใน', value: service.prepMinutes, hint: 'นับจากร้านรับออเดอร์' },
   { icon: Bike, label: 'ส่งฟรีเมื่อสั่งครบ', value: `฿${service.freeDeliveryAt}`, hint: `ต่ำกว่านั้นค่าส่ง ฿${service.deliveryFee}` },
-  { icon: MapPin, label: 'สั่งขั้นต่ำ', value: `฿${service.minimumOrder}`, hint: 'ทั้งรับที่ร้านและจัดส่ง' },
+  { icon: MapPin, label: 'สั่งได้ตั้งแต่', value: '1 ชิ้น', hint: 'ไม่มียอดขั้นต่ำ' },
 ];
 
 /** Already said elsewhere on the site (the home page's story, the trust bar)

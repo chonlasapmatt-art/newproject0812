@@ -170,7 +170,6 @@ begin
     v_subtotal := v_subtotal + (v_menu.price+v_add_total)*v_qty;
     update public.menu_items set stock=stock-v_qty,is_available=(stock-v_qty)>0,updated_at=now() where id=v_menu.id;
   end loop;
-  if v_subtotal < 100 then raise exception 'minimum order not met'; end if;
   if nullif(upper(p_payload->>'coupon'),'') is not null then
     select * into v_coupon from public.coupons where code=upper(p_payload->>'coupon') and is_active and now() between starts_at and ends_at and v_subtotal>=minimum_spend and (usage_limit is null or used_count<usage_limit) for update;
     if found then v_discount := case when v_coupon.discount_type='fixed' then v_coupon.discount_value else round(v_subtotal*v_coupon.discount_value/100,2) end; update public.coupons set used_count=used_count+1 where id=v_coupon.id; end if;

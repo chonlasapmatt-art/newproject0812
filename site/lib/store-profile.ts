@@ -61,7 +61,6 @@ export const STORE_PROFILE = {
   service: {
     deliveryFee: 30,
     freeDeliveryAt: 300,
-    minimumOrder: 100,
     prepMinutes: '20–30 นาที',
   },
 } as const;

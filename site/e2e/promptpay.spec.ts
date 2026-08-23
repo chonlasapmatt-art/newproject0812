@@ -7,7 +7,7 @@ import { expect, signIn, test } from './fixtures';
  * attached.
  */
 
-/** Fill a basket past the store's ฿100 minimum. */
+/** Fill a basket with something to pay for. */
 async function addToCart(page: Page, quantity = 3) {
   // Adding needs an account now, so every basket here starts signed in.
   await signIn(page);

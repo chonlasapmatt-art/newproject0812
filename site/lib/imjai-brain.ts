@@ -439,7 +439,7 @@ export function answer(question: string, context: BrainContext): Answer {
     case 'delivery':
       return {
         intent,
-        text: `สั่งได้ทั้งรับที่ร้านและจัดส่งค่ะ\nยอดขั้นต่ำ ${baht(STORE.minimumOrder)}\nค่าส่ง ${baht(STORE.deliveryFee)} และส่งฟรีเมื่อยอด ${baht(STORE.freeDeliveryAt)} ขึ้นไป\nรับที่ร้านประมาณ ${STORE_PROFILE.service.prepMinutes} จัดส่งประมาณ 30–45 นาทีค่ะ`,
+        text: `สั่งได้ทั้งรับที่ร้านและจัดส่งค่ะ ไม่มียอดขั้นต่ำ สั่งกี่ชิ้นก็ได้\nค่าส่ง ${baht(STORE.deliveryFee)} และส่งฟรีเมื่อยอด ${baht(STORE.freeDeliveryAt)} ขึ้นไป\nรับที่ร้านประมาณ ${STORE_PROFILE.service.prepMinutes} จัดส่งประมาณ 30–45 นาทีค่ะ`,
         chips: ['สั่งซื้อยังไง', 'จ่ายเงินยังไงได้บ้าง'],
         link: { href: '/menu', label: 'เริ่มเลือกเมนู' },
       };

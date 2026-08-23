@@ -624,7 +624,6 @@ function StoreSettings() {
           <div><dt>เจ้าของ</dt><dd>{STORE_PROFILE.owner.name}</dd></div>
           <div><dt>ที่อยู่</dt><dd>{STORE_PROFILE.location.address}</dd></div>
           <div><dt>เวลาเปิด</dt><dd>{STORE_PROFILE.hours.everyday} · ครัวปิดรับ {STORE_PROFILE.hours.kitchenLastOrder}</dd></div>
-          <div><dt>ยอดขั้นต่ำ</dt><dd>{baht(STORE_PROFILE.service.minimumOrder)}</dd></div>
           <div><dt>ค่าส่ง</dt><dd>{baht(STORE_PROFILE.service.deliveryFee)} · ส่งฟรีเมื่อถึง {baht(STORE_PROFILE.service.freeDeliveryAt)}</dd></div>
         </dl>
         <p className="admin-hint">ค่าเหล่านี้อยู่ในไฟล์ lib/store-profile.ts แก้แล้วจะเปลี่ยนทุกหน้าพร้อมกัน</p>

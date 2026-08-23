@@ -44,7 +44,6 @@ export const STORE = {
   line: '@490ghfyn',
   deliveryFee: 30,
   freeDeliveryAt: 300,
-  minimumOrder: 100,
 };
 
 const drinkOptions = [

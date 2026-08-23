@@ -22,7 +22,7 @@ const facts = [
   'ปรุงสดใหม่ทุกจาน',
   `เปิดทุกวัน ${STORE_PROFILE.hours.everyday}`,
   `ส่งฟรีเมื่อครบ ฿${STORE.freeDeliveryAt}`,
-  `ยอดขั้นต่ำ ฿${STORE.minimumOrder}`,
+  'สั่งได้ตั้งแต่ 1 ชิ้น ไม่มีขั้นต่ำ',
   'เบเกอรี่อบใหม่ทุกเช้า',
   `รับที่ร้าน ${STORE_PROFILE.service.prepMinutes}`,
 ];
