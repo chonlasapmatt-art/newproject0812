@@ -5,6 +5,7 @@ import { Bike, Clock3, MapPin, UtensilsCrossed } from 'lucide-react';
 import Link from 'next/link';
 import { DURATION, EASE, useMotionOK } from '../lib/motion';
 import { STORE_PROFILE } from '../lib/store-profile';
+import { StoreMap } from './store-map';
 import { Tilt } from './tilt';
 
 /**
@@ -62,11 +63,7 @@ export function AboutPage() {
       <motion.section {...rise(0)} data-reveal className="about-place">
         <Tilt strength={4} lift={8} sheen={false}>
           <article className="place-card">
-            <div className="place-map" aria-hidden>
-              <span className="place-road place-road-a" />
-              <span className="place-road place-road-b" />
-              <span className="place-pin"><MapPin size={17} /></span>
-            </div>
+            <StoreMap className="place-map" />
             <div className="place-copy">
               <p className="eyebrow">ที่ตั้งร้าน</p>
               <h2>แวะมาทานที่ร้านได้</h2>

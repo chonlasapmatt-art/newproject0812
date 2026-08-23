@@ -7,6 +7,7 @@ import { STORE } from '../lib/catalog';
 import { DEMO_REVIEWS } from '../lib/store-profile';
 import { useMenu } from '../lib/menu-admin';
 import { Divider, RevealLines } from './reveal-text';
+import { StoreMap } from './store-map';
 import { Magnetic } from './magnetic';
 import { FactsMarquee } from './marquee';
 import { useMotionOK } from '../lib/motion';
@@ -131,7 +132,7 @@ export function HomePage() {
       </section>
 
       <section className="visit-section" id="location">
-        <div className="visit-map" aria-hidden="true"><span className="road road-a" /><span className="road road-b" /><span className="road road-c" /><div><MapPin /><b>IMJAI</b></div></div>
+        <StoreMap className="visit-map" />
         <div className="visit-copy"><p className="eyebrow">COME SAY HELLO</p><RevealLines as="h2" lines={['แวะมาพักใจ', 'แล้วทานอะไรอร่อย ๆ']} /><dl><div><dt><MapPin /></dt><dd><b>ที่ตั้งร้าน</b><span>{STORE.address}</span></dd></div><div><dt><Clock3 /></dt><dd><b>เวลาเปิด–ปิด</b><span>{STORE.hours}</span></dd></div></dl><a className="primary-button" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(STORE.address)}`} target="_blank" rel="noreferrer">เปิดแผนที่ <ArrowRight size={17} /></a></div>
       </section>
     </main>

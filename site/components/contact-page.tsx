@@ -131,13 +131,16 @@ export function ContactPage() {
         )}
       </section>
 
-      {line?.href && (
+      {/* The saved LINE account, not the placeholder this file shipped with —
+          the loudest button on the page was the one still pointing at an
+          account that does not exist. */}
+      {(liveLineUrl || line?.href) && (
         <motion.section {...rise(0.1)} data-reveal className="contact-cta">
           <div>
             <h2>ทักไลน์เร็วที่สุด</h2>
             <p>แอดมินตอบเองในเวลาทำการ ส่งรูปเมนูหรือสลิปได้เลย</p>
           </div>
-          <a className="primary-button" href={line.href} target="_blank" rel="noreferrer">
+          <a className="primary-button" href={liveLineUrl || line!.href} target="_blank" rel="noreferrer">
             <MessageCircle size={18} /> เปิดแชท LINE
           </a>
         </motion.section>

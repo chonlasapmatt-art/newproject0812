@@ -19,5 +19,5 @@ Deno.serve(async (request) => {
     const answer = String(result.output_text ?? 'ขอส่งต่อให้พนักงานช่วยตอบนะคะ').slice(0,1200);
     if (conversationId) await client.from('ai_messages').insert([{ conversation_id: conversationId, role: 'user', content: clean }, { conversation_id: conversationId, role: 'assistant', content: answer }]);
     return Response.json({ answer });
-  } catch { return Response.json({ answer: 'ตอนนี้น้องอิ่มใจยังตอบไม่ได้ กรุณาติดต่อร้านที่ 02-123-4567 ค่ะ' }, { status: 503 }); }
+  } catch { return Response.json({ answer: 'ตอนนี้น้องอิ่มใจยังตอบไม่ได้ กรุณาติดต่อร้านที่ 099-875-6879 ค่ะ' }, { status: 503 }); }
 });

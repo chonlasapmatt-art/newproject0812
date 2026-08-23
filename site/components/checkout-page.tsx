@@ -173,7 +173,7 @@ export function CheckoutPage() {
       router.push(`/track?order=${encodeURIComponent(draft.orderNumber)}&created=1`);
     } catch {
       setSubmitting(false);
-      alert('ยังส่งออเดอร์ไม่ได้ กรุณาลองอีกครั้งหรือติดต่อร้านที่ 02-123-4567');
+      alert('ยังส่งออเดอร์ไม่ได้ กรุณาลองอีกครั้งหรือติดต่อร้านที่ 099-875-6879');
     }
   };
 

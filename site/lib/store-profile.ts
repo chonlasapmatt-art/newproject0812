@@ -46,10 +46,9 @@ export const STORE_PROFILE = {
   },
 
   location: {
-    /** PLACEHOLDER — needs the real shopfront address. */
-    address: '88/12 ถนนสุขุมวิท แขวงคลองตัน เขตวัฒนา กรุงเทพมหานคร 10110',
-    landmark: 'ใกล้ทางออก MRT ที่ใกล้ที่สุด',
-    placeholder: true,
+    address: '118 ซอยพหลโยธิน 69 เขตบางเขน กรุงเทพมหานคร',
+    landmark: 'ซอยพหลโยธิน 69 บางเขน',
+    placeholder: false,
   },
 
   hours: {
@@ -79,25 +78,25 @@ export const CONTACT_CHANNELS: ContactChannel[] = [
     label: 'LINE Official Account',
     // The placeholder. The contact page swaps in whatever the shop saved in
     // the dashboard, so this is only what a brand-new install shows.
-    value: '@imjaicafe',
-    href: 'https://line.me/R/ti/p/%40imjaicafe',
+    value: '@490ghfyn',
+    href: 'https://lin.ee/Ph3KcFO',
     hint: 'ตอบเร็วที่สุด ทักได้ตลอดเวลาทำการ',
     placeholder: true,
   },
   {
     id: 'phone',
     label: 'โทรหาร้าน',
-    value: '02-123-4567',
-    href: 'tel:021234567',
+    value: '099-875-6879',
+    href: 'tel:0998756879',
     hint: 'สั่งด่วนหรือสอบถามเรื่องออเดอร์',
-    placeholder: true,
+    placeholder: false,
   },
   {
     id: 'address',
     label: 'แวะมาที่ร้าน',
     value: STORE_PROFILE.location.address,
     hint: STORE_PROFILE.hours.note,
-    placeholder: true,
+    placeholder: false,
   },
 ];
 
