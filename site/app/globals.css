@@ -292,7 +292,7 @@ button { color: inherit; }
 .quantity-stepper { width: fit-content; min-height: 36px; border: 1px solid var(--line); border-radius: 999px; display: grid; grid-template-columns: 36px 32px 36px; align-items: center; text-align: center; }
 .quantity-stepper button { height: 100%; border: 0; background: transparent; display: grid; place-items: center; cursor: pointer; }
 .quantity-stepper svg { width: 15px; }
-.cart-summary { padding: 20px 24px 24px; border-top: 1px solid var(--line); background: #fcf8f0; }
+.cart-summary { padding: 20px 24px 24px; border-top: 1px solid var(--line); background: var(--cream); }
 .cart-summary > label { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 750; }
 .coupon-row { display: grid; grid-template-columns: 1fr auto; align-items: center; border: 1px solid var(--line); background: var(--surface); }
 .coupon-row input { width: 100%; min-height: 42px; padding: 0 12px; border: 0; outline: 0; background: transparent; }
@@ -511,7 +511,7 @@ button { color: inherit; }
 .assistant-panel header button { margin-left: auto; width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255,255,255,.12); color: var(--paper); cursor: pointer; }
 .assistant-panel header button svg { width: 16px; height: 16px; }
 
-.assistant-messages { overflow-y: auto; overscroll-behavior: contain; padding: 16px 15px 6px; background: #faf7f0; scroll-behavior: smooth; }
+.assistant-messages { overflow-y: auto; overscroll-behavior: contain; padding: 16px 15px 6px; background: var(--cream); scroll-behavior: smooth; }
 .chat-row { display: grid; gap: 5px; margin-bottom: 14px; justify-items: start; }
 .chat-row.user { justify-items: end; }
 .chat-bubble { margin: 0; width: fit-content; max-width: 88%; padding: 11px 13px; border-radius: 15px; font-size: 13px; line-height: 1.65; white-space: pre-line; }
@@ -650,7 +650,7 @@ button { color: inherit; }
 .story-sign svg { color: var(--orange); }
 .reviews-section { text-align: center; }
 .review-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; text-align: left; }
-.review-grid article { min-height: 240px; padding: 26px; display: flex; flex-direction: column; border: 1px solid var(--line); background: #fcf8ef; }
+.review-grid article { min-height: 240px; padding: 26px; display: flex; flex-direction: column; border: 1px solid var(--line); background: #fcf8ef; color: #33261f; }
 .review-grid article > svg { color: #c7b7a7; }
 .stars { margin-top: 20px; color: var(--orange); letter-spacing: .15em; }
 .review-grid p { font-family: var(--font-display); font-size: 20px; line-height: 1.55; }
@@ -663,7 +663,7 @@ button { color: inherit; }
 .visit-map > div { position: absolute; left: 52%; top: 44%; transform: translate(-50%,-50%); display: grid; place-items: center; color: var(--orange); }
 .visit-map svg { width: 56px; height: 56px; fill: var(--orange); color: #fff; }
 .visit-map b { margin-top: 5px; color: var(--coffee); letter-spacing: .2em; }
-.visit-copy { padding: 80px 8vw; display: flex; flex-direction: column; justify-content: center; background: #efe4d1; }
+.visit-copy { padding: 80px 8vw; display: flex; flex-direction: column; justify-content: center; background: #efe4d1; color: #33261f; }
 .visit-copy h2 { margin: 0; font-family: var(--font-display); font-size: clamp(42px,4.5vw,64px); font-weight: 500; line-height: 1.15; }
 .visit-copy dl { margin: 28px 0; display: grid; gap: 18px; }
 .visit-copy dl div { display: grid; grid-template-columns: 32px 1fr; gap: 8px; }
@@ -698,7 +698,7 @@ button { color: inherit; }
 .catalog-art img, .product-modal-art img { transition: transform .3s ease; }
 .catalog-art:hover img { transform: scale(1.05); }
 .coffee,.cocoa { background: #b8a18c; }.terra { background: #be7149; }.sand { background: #dac4a6; }.olive,.sage { background: #879177; }.mustard { background: #d0a751; }.rose { background: #c48a82; }
-.catalog-art > small { position: absolute; left: 12px; bottom: 10px; padding: 4px 8px; background: rgba(255,255,255,.78); font-size: 8px; }
+.catalog-art > small { position: absolute; left: 12px; bottom: 10px; padding: 4px 8px; background: rgba(255,255,255,.78); color: #33261f; font-size: 8px; }
 .catalog-art > b { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(45,36,30,.68); color: white; font-size: 15px; }
 .sold-out { opacity: .72; }
 .catalog-copy { padding: 17px; }
