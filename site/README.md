@@ -28,6 +28,18 @@
   แล้วพากลับมาที่เดิมพร้อมของที่กดค้างไว้ และมีปุ่มออกจากระบบในเมนูบัญชี
 - **ระบบ motion กลาง** (`lib/motion.ts`) — easing กับ duration ชุดเดียวทั้งเว็บ
   ทุกอย่างปิดตัวเองเมื่อผู้ใช้ตั้ง `prefers-reduced-motion`
+- **ปุ่มทักไลน์ตรงจุดที่ลูกค้าติดปัญหา** (`lib/line-oa.ts`, `components/line-button.tsx`)
+  — หน้าชำระเงิน หน้าติดตามออเดอร์ (ทั้งตอนเจอและไม่เจอออเดอร์) ท้ายเว็บ และหน้าติดต่อเรา
+  ซ่อนตัวเองทั้งหมดถ้ายังไม่ได้ตั้งค่า เพราะลิงก์ที่เปิดแล้วไม่มีอะไรแย่กว่าไม่มีปุ่ม
+- **ส่งออเดอร์และผลตรวจสลิปเข้า n8n** (`lib/n8n.ts`) — ส่งแบบไม่หน่วงและไม่ทำให้ออเดอร์ล้ม
+  ส่งไม่สำเร็จจะเก็บคิวไว้ส่งซ้ำ ไม่ทิ้ง เพราะการทิ้งแปลว่ามีลูกค้ารออาหารที่ไม่มีใครรู้
+- **ข้อมูลร้านที่ร้านแก้เองได้** (`lib/store-settings.ts`) — LINE OA เบอร์ ที่อยู่ เวลาเปิด-ปิด
+  แก้จากแดชบอร์ดแล้วขึ้นหน้าเว็บทันที ไม่ต้องรอ deploy
+- **หน้าอัปเดตเว็บและ roadmap ในแดชบอร์ด** (`lib/changelog.ts`) — อะไรเปลี่ยนไปแล้วบ้าง
+  และอะไรกำลังจะทำ พร้อมบอกว่าแต่ละอันรออะไรจากร้าน
+- **แผนที่จริงของร้าน** (`components/store-map.tsx`) — Google Maps embed ที่อ่านที่อยู่จากที่เดียวกับหน้าเว็บ
+- **ธีมสี 4 แบบ** (`lib/theme.ts`) — ตามเครื่อง สว่าง นวลตา มืด เลือกแล้วจำไว้ข้ามหน้า
+- **หน้ายอดขายเรียลไทม์** (`lib/sales.ts`) — อ่านจากออเดอร์จริง
 
 ### ไฟล์ที่ควรรู้จักก่อนแก้
 
@@ -39,6 +51,11 @@
 | `lib/menu-admin.ts` | การแก้ราคา/สต็อกจากหลังร้าน ทับลงบน `catalog.ts` |
 | `lib/imjai-brain.ts` | สมองของน้องอิ่มใจ — เพิ่มคำถามที่ตอบได้ที่นี่ |
 | `lib/promptpay.ts` | สร้าง payload QR ตามมาตรฐาน EMVCo (แก้ระวัง มี test คุมอยู่) |
+| `lib/store-settings.ts` | ข้อมูลร้านที่อ่านจากฐานข้อมูล — ทับ `store-profile.ts` เมื่อร้านแก้เอง |
+| `lib/line-oa.ts` | สร้างลิงก์ LINE (pure function ไม่อ่าน config เอง) |
+| `lib/n8n.ts` | ส่งออเดอร์เข้า n8n พร้อมคิวส่งซ้ำ |
+| `lib/changelog.ts` | รายการอัปเดตและ roadmap ที่ขึ้นในแดชบอร์ด |
+| `lib/sales.ts` | สรุปยอดขายจากออเดอร์ |
 | `app/globals.css` | สไตล์ทั้งเว็บไฟล์เดียว |
 
 > หมายเหตุ: หน้าเว็บออนไลน์ทำงานในโหมด Guest ได้ทันที ส่วนสมาชิก ฐานข้อมูล Realtime อัปโหลดสลิป Admin และ AI จริงต้องเชื่อม Supabase ของร้านตามขั้นตอนด้านล่าง
@@ -73,6 +90,15 @@ menu-image-prompts.json  Prompt สำหรับภาพเมนูจริ
 | `OPENAI_MODEL` | Edge Function | ห้ามเปิดเผยโดยไม่จำเป็น |
 | `CORS_ALLOWED_ORIGINS` | Edge Functions | ไม่ใช่ Secret |
 | `PROMPTPAY_ID` | Edge Function/Private setting | ห้ามใส่จริงใน Repository |
+| `NEXT_PUBLIC_LINE_OA_ID` | ปุ่มทักไลน์ | ได้ (เป็น ID สาธารณะของร้าน) |
+| `NEXT_PUBLIC_LINE_OA_LINK` | ปุ่มทักไลน์ (ลิงก์ lin.ee — ชนะ ID ถ้าใส่ทั้งคู่) | ได้ |
+| `NEXT_PUBLIC_N8N_WEBHOOK_URL` | ส่งออเดอร์เข้า n8n | ได้ แต่ดูหมายเหตุด้านล่าง |
+| `NEXT_PUBLIC_DASHBOARD_KEY` | กุญแจเปิดแดชบอร์ดในโหมดพรีวิว | ได้ |
+
+> **หมายเหตุเรื่อง n8n:** เว็บนี้เป็น static export จึงไม่มีเซิร์ฟเวอร์ของตัวเอง
+> URL ของ webhook ฝังอยู่ในหน้าเว็บและใครเปิด view source ก็เห็น นี่เป็นข้อจำกัดของการ
+> host แบบนี้ ไม่ใช่ความผิดพลาด — แปลว่า workflow ปลายทาง **ต้องถือว่าสิ่งที่ส่งมาเป็นคำกล่าวอ้าง
+> ไม่ใช่ข้อเท็จจริง** และต้องเช็คกับฐานข้อมูลก่อนทำอะไรที่เกี่ยวกับเงิน
 
 ## รันบนเครื่อง
 
@@ -88,32 +114,36 @@ npm run dev
 
 ## ตั้งค่า Supabase
 
-1. สร้าง Supabase Project ใหม่และเก็บ URL กับ public anon key
-2. ติดตั้ง Supabase CLI แล้ว Login
-3. เชื่อม Project และรัน migrations
+**ปกติไม่ต้องทำอะไรเลย** — CI ทำให้ทุกครั้งที่ push ดูหัวข้อ "Deploy Backend" ด้านล่าง
 
-```bash
-supabase link --project-ref YOUR_PROJECT_REF
-supabase db push
-```
+### กรณีตั้ง Project ใหม่ตั้งแต่ต้น
 
-4. ที่ Authentication > URL Configuration ใส่ Site URL และ Redirect URLs ของ Production
-5. เปิด Email confirmation ตามนโยบายร้าน
-6. ตั้งค่า Secret สำหรับ Edge Functions โดยไม่ใส่ค่าไว้ใน Frontend
+1. สร้าง Supabase Project ใหม่ เก็บ URL กับ publishable/anon key
+2. เปิด SQL Editor แล้ววาง `supabase/setup.sql` ทั้งไฟล์ กด Run
+   (ไฟล์เดียวจบ — ตาราง RLS policies functions triggers และ seed เมนู)
+3. Authentication → URL Configuration ใส่ Site URL และ Redirect URLs ของ Production
+4. ตั้ง Secret ของ Edge Functions ที่ Supabase dashboard (หรือใส่เป็น GitHub secret
+   แล้วให้ CI ส่งให้ — ดูด้านล่าง)
 
-```bash
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY=... OPENAI_API_KEY=... CORS_ALLOWED_ORIGINS=https://YOUR_DOMAIN PROMPTPAY_ID=...
-supabase functions deploy create-order
-supabase functions deploy ai-assistant
-```
+### ตั้งแอดมินคนแรก
 
-7. ให้ Admin คนแรกผ่าน SQL Editor โดยทำครั้งเดียวจากระบบหลังบ้าน
+ต้องทำจาก SQL Editor เท่านั้น เพราะ `role` ถูก revoke สิทธิ์เขียนจากฝั่ง browser ไว้
+— ถ้าเว็บตั้งสิทธิ์ตัวเองได้ ใครก็ตั้งตัวเองเป็นแอดมินได้
 
-```sql
-update public.profiles set role = 'admin' where id = 'AUTH_USER_UUID';
-```
+1. สร้างบัญชี: Authentication → Users → **Add user** (ติ๊ก **Auto Confirm User**)
+2. เปิด `supabase/make-admin.sql` แก้บรรทัด `target` เป็นอีเมลนั้น แล้ว Run
 
-Role ไม่สามารถแก้จาก Frontend ได้ และ RLS ป้องกันการแก้ `role`/`is_active` ของตนเอง
+ไฟล์นั้น **ขึ้นแดงพร้อมบอกเหตุผล** ถ้าไม่มีบัญชีนั้น แทนที่จะขึ้น `Success. No rows returned`
+ซึ่งอ่านเหมือนสำเร็จทั้งที่แปลว่าหาไม่เจอ
+
+### แก้ schema ต่อจากนี้
+
+เอาไฟล์ไปวางที่ **`supabase/ci/`** ไม่ใช่ `supabase/migrations/`
+CI รันเฉพาะโฟลเดอร์ `ci/` และรัน **ทุกไฟล์ทุกครั้ง** จึงมีกฎว่า
+**ทุกไฟล์ต้องรันซ้ำได้อย่างปลอดภัย** — รายละเอียดและข้อห้ามอยู่ใน `supabase/ci/README.md`
+
+`migrations/` เก็บไว้เป็นบันทึกว่า schema ถูกสร้างมาอย่างไร และ `setup.sql` คือไฟล์
+one-paste สำหรับ project ใหม่
 
 ## การชำระเงินด้วยพร้อมเพย์
 
@@ -164,13 +194,24 @@ key เดียวกันเรียกได้จากทั้ง n8n �
 ## Tests
 
 ```bash
-npm test
+npm test          # 113 unit tests
 npm run lint
 npm run build
-npm run test:e2e
+npm run test:e2e  # 86 tests (desktop + mobile)
 ```
 
-เส้นทาง E2E ที่เตรียมไว้ครอบคลุม Guest เพิ่มสินค้า และป้องกันผู้ใช้ทั่วไปเข้าหน้า Admin สามารถเพิ่มบัญชีทดสอบ Supabase เพื่อครอบคลุม Auth/Realtime เต็มรูปแบบหลังเชื่อม Backend จริง
+E2E รันกับไฟล์ที่ export จริง ไม่ใช่ dev server เพราะไฟล์ที่ export คือสิ่งที่ deploy จริง
+
+### เทสที่มีไว้กันบั๊กที่เคยหลุดไปแล้ว
+
+| ไฟล์ | กันอะไร |
+|---|---|
+| `e2e/type-integrity.spec.ts` | หัวข้อภาษาไทยโดนตัด — วัด**เนื้อตัวอักษรจริง**ด้วย canvas ไม่ใช่กล่องข้อความ เพราะกล่องมองไม่เห็นสระที่ถูกเฉือน มีเทสที่เอาบั๊กเก่ากลับมาใส่แล้วต้องจับได้ ไม่งั้นเทสที่ไม่เคยแดงก็ดูเหมือนเว็บปกติ |
+| `tests/session.test.ts` | ล็อกอินโหมดพรีวิวค้างข้ามมาหลังต่อฐานข้อมูล |
+| `tests/store-settings.test.ts` | RLS ปฏิเสธการเขียนแล้วรายงานว่าสำเร็จ |
+| `tests/store-profile.test.ts` | ข้อมูลร้าน 2 ที่ในโค้ดไม่ตรงกัน และข้อมูลสมมติหลุดขึ้นเว็บ |
+| `tests/n8n.test.ts` | ออเดอร์หายเพราะส่ง webhook ไม่สำเร็จ |
+| `e2e/overlays.spec.ts` | ตะกร้า/โมดัลแสดงผิดตำแหน่ง — เทสเดิมเช็คแค่ว่า "มีอยู่" ไม่ได้เช็คว่า "ลอยถูกที่" |
 
 ## Deploy ด้วย GitHub Pages
 
@@ -187,20 +228,61 @@ base path ไม่ได้เขียนตายในโค้ด แต่
 | `NEXT_PUBLIC_ADMIN_EMAILS` | เว็บที่ deploy จะไม่มีแอดมินเลย (ตั้งใจ — อีเมลไม่ควรอยู่ใน repo สาธารณะ) |
 | `NEXT_PUBLIC_SUPABASE_URL` / `..._ANON_KEY` | ทำงานโหมดพรีวิว เก็บข้อมูลในเบราว์เซอร์ |
 | `NEXT_PUBLIC_PROMPTPAY_ID` / `..._NAME` | ใช้ค่า default ที่ระบุใน workflow |
+| `NEXT_PUBLIC_LINE_OA_ID` / `..._LINK` | ใช้ค่าของร้านที่ตั้งไว้ใน workflow |
+| `NEXT_PUBLIC_N8N_WEBHOOK_URL` | ไม่ส่งออเดอร์เข้า n8n (เงียบ ไม่ error) |
 
 ## Deploy Backend
 
-Supabase ดูแล PostgreSQL, Auth, Storage, Realtime และ Edge Functions ส่วนเว็บ Frontend ไม่เก็บ Service Role Key, OpenAI Key หรือ PromptPay จริง
+`.github/workflows/supabase.yml` ทำให้อัตโนมัติทุกครั้งที่ push โดยจะรันเมื่อไฟล์ใน
+`site/supabase/**` เปลี่ยน (หรือกด Run workflow เอง)
+
+1. รัน SQL ทุกไฟล์ใน `supabase/ci/`
+2. ตั้ง `CORS_ALLOWED_ORIGINS` ให้เอง — **ถ้าไม่ตั้ง ทุก request จากเบราว์เซอร์จะได้ 403**
+   ซึ่งหน้าตาเหมือน deploy ไม่สำเร็จทุกประการ
+3. ส่ง function secret ที่มีใน repository ให้ Supabase
+4. Deploy `create-order`, `verify-slip`, `ai-assistant`
+
+### Secret ที่ต้องมี
+
+| Secret | จำเป็น | เอามาจากไหน |
+|---|---|---|
+| `SUPABASE_ACCESS_TOKEN` | **ใช่** | https://supabase.com/dashboard/account/tokens (ขึ้นต้น `sbp_`) |
+| `SLIPOK_API_KEY` / `SLIPOK_BRANCH_ID` | ไม่ | SlipOK — ถ้าไม่ใส่ สลิปจะรอพนักงานตรวจมือ ออเดอร์ไม่หาย |
+| `PROMPTPAY_ID` | ไม่ | ถ้าไม่ใส่จะใช้ค่าใน workflow |
+| `OPENAI_API_KEY` | ไม่ | น้องอิ่มใจตอบในเว็บเองอยู่แล้ว ไม่ต้องใช้ |
+
+ใช้ **token อันเดียว** ไม่ต้องใช้รหัสผ่านฐานข้อมูล เพราะ SQL วิ่งผ่าน Management API
+ไม่ได้ต่อ Postgres ตรง — ผลพลอยได้คือถ้า deploy พังกลางคัน ฐานข้อมูลไม่ค้างในสภาพที่รันซ้ำไม่ได้
 
 ## จุดที่เจ้าของร้านต้องใส่ข้อมูลจริง
 
-1. Supabase URL / anon key และ Project ref
-2. PromptPay ID/QR ของร้านใน Private setting หรือ Edge Function secret
-3. OpenAI API key ใน Supabase Edge Function เท่านั้น
-4. Domain จริงและ CORS allowlist
-5. บัญชี admin/staff ชุดแรก
-6. ภาพเมนู WebP/PNG จริงจาก Prompt ที่เตรียมไว้
-7. LINE OA URL, Social links และข้อมูลโทรศัพท์/ที่อยู่ หากค่าปัจจุบันเป็น Placeholder
+ทำแล้ว:
+
+- Supabase URL / publishable key และ project ref
+- LINE OA (`@490ghfyn` + ลิงก์ lin.ee)
+- ที่อยู่ เบอร์โทร และแผนที่จริงของร้าน
+- บัญชี admin ชุดแรก
+
+ยังเหลือ:
+
+| อย่าง | ผลถ้ายังไม่ทำ |
+|---|---|
+| **เปิดแชทใน LINE OA Manager** | ลูกค้ากดปุ่มแล้วเพิ่มเพื่อนได้ แต่ทักหาร้านไม่ได้ |
+| `NEXT_PUBLIC_N8N_WEBHOOK_URL` | ออเดอร์ไม่ไหลเข้า n8n (ระบบพร้อมแล้ว รอ URL) |
+| SlipOK API key + branch id | ต้องตรวจสลิปด้วยมือ |
+| PromptPay ID จริงของร้าน | QR ใช้ค่า default ใน workflow |
+| ภาพเมนู WebP/PNG จริง | ใช้ภาพ placeholder จาก `menu-image-prompts.json` |
+| Domain จริง + CORS allowlist | ใช้ URL ของ GitHub Pages |
+
+## สิ่งที่ยังไม่เสร็จ และรู้อยู่
+
+- **ปุ่มบันทึกในแดชบอร์ด → ตั้งค่าร้าน ยังไม่ยืนยันว่าใช้ได้** — ตัวที่ทำให้
+  "บอกสำเร็จทั้งที่ไม่สำเร็จ" ถูกปิดไปแล้ว และหน้าจอบอกสาเหตุจริงได้แล้ว
+  แต่ยังไม่ได้เห็นผลลัพธ์จริงจากเครื่องร้าน ระหว่างนี้ข้อมูลร้านฝังอยู่ในโค้ดจึงถูกต้องอยู่แล้ว
+- **แผนที่ยังไม่ได้ยืนยันด้วยตาบนเครื่องจริง** — sandbox ที่พัฒนาบล็อก Google
+  ถ้าไม่ขึ้น เปลี่ยนไป OpenStreetMap ได้ ไม่ต้องใช้ key เหมือนกัน
+- **รีวิวหน้าแรกเป็นตัวอย่าง** ยังไม่ใช่รีวิวลูกค้าจริง
+- **ออเดอร์ยังไม่ซิงก์ข้ามอุปกรณ์เต็มรูปแบบ** จนกว่าจะยืนยันว่า `create-order` ทำงานครบวงจร
 
 ## หลักความปลอดภัยสำคัญ
 
