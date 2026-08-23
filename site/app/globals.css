@@ -1570,3 +1570,56 @@ main, .site-footer { position: relative; z-index: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) { .read-progress { display: none; } }
+
+
+/* --- Website updates -------------------------------------------------- *
+   The shop's own record of what changed and what is coming. Laid out as a
+   dated list rather than cards: these are read top to bottom, once, and a
+   grid of tiles would ask them to hunt for the newest one. */
+.updates-panel { margin-top: 22px; }
+.updates-head { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: flex-end; }
+.updates-head h2 { margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--ink); }
+.updates-head p { margin: 4px 0 0; color: var(--ink-muted); font-size: 11px; }
+.updates-switch { display: flex; gap: 6px; }
+.updates-switch button { min-height: 38px; padding: 0 13px; display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-muted); font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer; transition: background .18s ease, color .18s ease, border-color .18s ease; }
+.updates-switch button:hover { border-color: var(--orange); color: var(--ink); }
+.updates-switch button.active { border-color: var(--coffee); background: var(--coffee); color: var(--paper); }
+.updates-switch b { font-size: 11px; opacity: .75; }
+
+.change-list { margin: 20px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.change-list li { display: grid; grid-template-columns: 140px 1fr; gap: 18px; padding: 16px 0; border-top: 1px solid var(--line); }
+.change-list li:last-child { border-bottom: 1px solid var(--line); }
+.change-when { display: grid; gap: 7px; justify-items: start; align-content: start; }
+.change-when time { color: var(--ink-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.change-kind { padding: 4px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+/* Four kinds, four fills — the shop reads "แก้ปัญหา" differently from
+   "ของใหม่", and the label alone makes them scan for it. */
+.kind-feature { background: #e8efe3; color: #3d5235; }
+.kind-fix { background: #fdeadf; color: #96502a; }
+.kind-security { background: #e4ecf4; color: #35506b; }
+.kind-design { background: #f2e9f4; color: #5f3f68; }
+.change-what { display: grid; gap: 6px; align-content: start; }
+.change-what b { font-size: 14px; color: var(--ink); }
+.change-what p { margin: 0; color: var(--ink-muted); font-size: 12px; line-height: 1.65; }
+.change-what small { display: flex; align-items: center; gap: 5px; color: var(--sage); font-size: 10px; }
+
+.roadmap { margin-top: 20px; display: grid; gap: 24px; }
+.roadmap-stage h3 { margin: 0 0 12px; font-family: var(--font-display); font-size: 16px; color: var(--coffee); }
+.roadmap-stage ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.roadmap-stage li { padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); display: grid; gap: 6px; }
+.roadmap-stage b { font-size: 13px; color: var(--ink); }
+.roadmap-stage p { margin: 0; color: var(--ink-muted); font-size: 12px; line-height: 1.65; }
+/* What the shop still has to hand over. Marked, because these are the items
+   that are waiting on them rather than on us. */
+.roadmap-stage small { padding: 6px 9px; border-radius: 6px; background: #fdf3e4; color: #8a5a24; font-size: 10px; justify-self: start; }
+
+@media (max-width: 700px) {
+  .change-list li { grid-template-columns: 1fr; gap: 8px; }
+  .change-when { grid-auto-flow: column; justify-content: start; align-items: center; gap: 10px; }
+}
+
+[data-theme='dark'] .kind-feature { background: #232c20; color: #b6cbaa; }
+[data-theme='dark'] .kind-fix { background: #2e2118; color: #e0ab84; }
+[data-theme='dark'] .kind-security { background: #1e2833; color: #a8c2dc; }
+[data-theme='dark'] .kind-design { background: #2a2130; color: #c8a9d0; }
+[data-theme='dark'] .roadmap-stage small { background: #2c2318; color: #d9ae74; }
