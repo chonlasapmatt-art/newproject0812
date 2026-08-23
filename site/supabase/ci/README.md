@@ -24,8 +24,11 @@ Two things this cannot do, so do them elsewhere:
 - **Change an existing column.** `create table if not exists` silently skips a
   table that already exists, so a changed definition here does nothing at all.
   Write an `alter table` guarded so it is safe twice.
-- **Anything destructive.** A `drop` runs again on the next deploy, and the
-  next, against live data.
+- **Anything destructive, unguarded.** A bare `drop` runs again on the next
+  deploy, and the next, against live data. A `drop` is only allowed inside a
+  check that can match nothing but wreckage — a table with no primary key, say,
+  which a finished migration never leaves behind — and the check has to be
+  written so it cannot match the healthy shape.
 
 `../migrations/` stays the record of how the schema was built, and
 `../setup.sql` is still the one-paste file for a brand-new project.
