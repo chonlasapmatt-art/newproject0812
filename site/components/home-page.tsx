@@ -9,6 +9,7 @@ import { DEMO_REVIEWS } from '../lib/store-profile';
 import { useMenu } from '../lib/menu-admin';
 import { Divider, RevealLines } from './reveal-text';
 import { DishArt } from './dish-art';
+import { DishEffects } from './dish-effects';
 import { StoreMap } from './store-map';
 import { Magnetic } from './magnetic';
 import { FactsMarquee } from './marquee';
@@ -132,7 +133,7 @@ export function HomePage() {
           {favourites.map((item, index) => (
             <Tilt key={item.sku} strength={7} lift={12}><motion.article data-reveal className="menu-card" initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * .06 }}>
               <Link prefetch={false} href={`/menu?item=${item.sku}`} className={`dish-illustration ${item.tone}`}>
-                {item.category === 'coffee' && <><span className="steam steam-one" /><span className="steam steam-two" /></>}
+                <DishEffects category={item.category} hot={item.hot} />
                 {item.image ? (
                   <DishArt src={item.image} alt={item.name} sizes="(max-width: 900px) 50vw, 25vw" />
                 ) : (

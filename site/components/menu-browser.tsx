@@ -9,6 +9,7 @@ import { CATEGORIES, type MenuCategory, type MenuItem } from '../lib/catalog';
 import { settle, useMotionOK } from '../lib/motion';
 import { useMenu, useMenuItem } from '../lib/menu-admin';
 import { DishArt } from './dish-art';
+import { DishEffects } from './dish-effects';
 import { Tilt } from './tilt';
 import { useAddToCart } from '../lib/add-to-cart';
 
@@ -47,7 +48,7 @@ export function MenuBrowser() {
       <section className="catalog-section">
         <div className="catalog-heading"><p>พบ <b>{items.length}</b> เมนู</p><span>ข้อมูลสินค้าและสต็อกล่าสุด</span></div>
         {items.length ? <div className="catalog-grid"><AnimatePresence mode="popLayout">{items.map((item, index) => <Tilt key={item.sku} strength={7} lift={12}><motion.article layout className={`catalog-card ${!item.available ? 'sold-out' : ''}`} key={item.sku} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10, transition: { duration: 0.16 } }} transition={{ delay: Math.min(index, 8) * .035 }}>
-          <button className={`catalog-art ${item.tone}`} onClick={() => setSelectedSku(item.sku)} disabled={!item.available} aria-label={`ดูรายละเอียด ${item.name}`}>{item.image ? <DishArt src={item.image} alt={item.name} sizes="(max-width: 900px) 50vw, 25vw" /> : <span>{item.emoji}</span>}{item.chefChoice && <em><Star size={12} fill="currentColor" /> Chef&apos;s Choice</em>}{!item.available && <b>หมดวันนี้</b>}<small>เหลือ {item.stock}</small></button>
+          <button className={`catalog-art ${item.tone}`} onClick={() => setSelectedSku(item.sku)} disabled={!item.available} aria-label={`ดูรายละเอียด ${item.name}`}><DishEffects category={item.category} hot={item.hot} />{item.image ? <DishArt src={item.image} alt={item.name} sizes="(max-width: 900px) 50vw, 25vw" /> : <span>{item.emoji}</span>}{item.chefChoice && <em><Star size={12} fill="currentColor" /> Chef&apos;s Choice</em>}{!item.available && <b>หมดวันนี้</b>}<small>เหลือ {item.stock}</small></button>
           <div className="catalog-copy"><p>{CATEGORIES.find((categoryItem) => categoryItem.id === item.category)?.label}</p><div className="catalog-title"><h2>{item.name}</h2><b>฿{item.price}</b></div><span>{item.description}</span>{item.allergens.length > 0 && <small>สารก่อภูมิแพ้: {item.allergens.join(', ')}</small>}<button disabled={!item.available} onClick={() => setSelectedSku(item.sku)}>{item.available ? 'เลือกตัวเลือก' : 'สินค้าหมด'} <Plus size={16} /></button></div>
         </motion.article></Tilt>)}</AnimatePresence></div> : <div className="no-results"><span>🔎</span><h2>ยังไม่พบเมนูที่ค้นหา</h2><p>ลองเปลี่ยนคำค้นหรือเลือกหมวดหมู่อื่นนะคะ</p></div>}
       </section>
@@ -96,7 +97,7 @@ function ProductModal({ item, onClose }: { item: MenuItem; onClose: () => void }
 
   return <><motion.button className="modal-backdrop" aria-label="ปิดรายละเอียดเมนู" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /><motion.section className="product-modal" role="dialog" aria-modal="true" aria-label={`รายละเอียด ${item.name}`} {...settle} exit={{ opacity: 0, y: 12, scale: 0.99, transition: { duration: 0.18 } }}>
     <button className="modal-close" onClick={onClose} aria-label="ปิด"><X /></button>
-    <div className={`product-modal-art ${item.tone}`}>{item.image ? <DishArt src={item.image} alt={item.name} sizes="(max-width: 820px) 100vw, 45vw" /> : <span>{item.emoji}</span>}{item.chefChoice && <em><Star size={13} fill="currentColor" /> Chef&apos;s Choice</em>}</div>
+    <div className={`product-modal-art ${item.tone}`}><DishEffects category={item.category} hot={item.hot} />{item.image ? <DishArt src={item.image} alt={item.name} sizes="(max-width: 820px) 100vw, 45vw" /> : <span>{item.emoji}</span>}{item.chefChoice && <em><Star size={13} fill="currentColor" /> Chef&apos;s Choice</em>}</div>
     <div className="product-modal-copy"><p className="eyebrow">{item.sku}</p><div className="modal-title"><h2>{item.name}</h2><b>฿{item.price}</b></div><p>{item.description}</p><details><summary>ส่วนประกอบและสารก่อภูมิแพ้</summary><p>{item.ingredients}</p><small>{item.allergens.length ? `มี: ${item.allergens.join(', ')}` : 'ไม่ระบุสารก่อภูมิแพ้หลัก'}</small></details>
       {(item.options ?? []).map((group) => <fieldset key={group.label}><legend>{group.label}</legend><div className="option-chips">{group.values.map((value) => <button type="button" className={options[group.label] === value ? 'active' : ''} onClick={() => setOptions((current) => ({ ...current, [group.label]: value }))} key={value}>{options[group.label] === value && <Check size={14} />}{value}</button>)}</div></fieldset>)}
       {!!item.addOns?.length && <fieldset><legend>เพิ่มความอร่อย</legend><div className="addon-list">{item.addOns.map((addOn) => <label key={addOn.name}><input type="checkbox" checked={addOns.includes(addOn.name)} onChange={() => setAddOns((current) => current.includes(addOn.name) ? current.filter((name) => name !== addOn.name) : [...current, addOn.name])} /><span>{addOn.name}</span><b>+฿{addOn.price}</b></label>)}</div></fieldset>}
