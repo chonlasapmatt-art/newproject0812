@@ -1,0 +1,18 @@
+# Supabase CLI project config.
+#
+# Only what the CLI needs to find this project and know how to build the
+# functions. Everything about how the project actually runs — auth settings,
+# rate limits, the function secrets — lives in the Supabase dashboard, because
+# those are the shop's to change and some of them are secrets that must never
+# sit in a repository.
+
+project_id = "vshufucommkfgmdtaodq"
+
+[functions.create-order]
+verify_jwt = false
+
+[functions.verify-slip]
+verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false

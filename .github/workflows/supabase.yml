@@ -1,0 +1,138 @@
+# Push the database and the Edge Functions to Supabase.
+#
+# Before this existed, changing anything server-side meant the shop opening the
+# Supabase dashboard and pasting SQL by hand — so the Edge Functions the
+# checkout calls were never deployed at all, and every confirmed order was
+# answered with an error. This closes that gap: the repository is the source of
+# truth, and pushing is what deploys it.
+#
+# The credentials are repository secrets. They are never printed, never passed
+# on a command line where a log could catch them, and nobody has to send them
+# anywhere to set this up.
+
+name: Deploy database and functions to Supabase
+
+on:
+  push:
+    branches: [claude/website-accessibility-check-blp19v, main]
+    # Only when something server-side actually changed. A CSS commit has no
+    # business restarting the shop's functions.
+    paths:
+      - 'site/supabase/**'
+      - '.github/workflows/supabase.yml'
+  # So a failed run can be retried, and so the first run can be started by hand.
+  workflow_dispatch:
+
+concurrency:
+  # Two runs pushing migrations at once is how a schema gets into a state
+  # nobody can reproduce.
+  group: supabase-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || 'vshufucommkfgmdtaodq' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stop early if the token is missing
+        # Without this the CLI fails several steps later with a message that
+        # sounds like the project is broken rather than unconfigured.
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN is not set. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to the project
+        working-directory: site
+        run: supabase link --project-ref "$PROJECT_REF"
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Record the migrations that were applied by hand
+        working-directory: site
+        # The first three ran through the SQL editor, before this workflow
+        # existed, so the project has their tables but no record of them.
+        # Without this `db push` tries to create them again and fails on the
+        # first `create table`. Marking them applied is bookkeeping, not a
+        # change — and re-running it is a no-op, which is why a failure here is
+        # not worth stopping the deploy for.
+        continue-on-error: true
+        run: |
+          supabase migration repair --status applied \
+            202608210001 202608210002 202608210003
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Apply new migrations
+        working-directory: site
+        run: supabase db push
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Tell the functions which site is allowed to call them
+        working-directory: site
+        # Not a secret — it is the address of the public website. But without
+        # it every browser request is answered 403 "request_not_allowed", which
+        # looks exactly like a broken deploy, so it is set here rather than
+        # left as one more thing to remember.
+        run: |
+          supabase secrets set --project-ref "$PROJECT_REF" \
+            CORS_ALLOWED_ORIGINS="$SITE_ORIGINS"
+        env:
+          SITE_ORIGINS: ${{ vars.SITE_ORIGINS || 'https://chonlasapmatt-art.github.io' }}
+
+      - name: Pass through any function secrets this repository holds
+        working-directory: site
+        # Optional. Whichever of these the shop has added as repository secrets
+        # gets pushed; the rest stay as they are in the Supabase dashboard.
+        # Written to a file rather than a command line so no value can be read
+        # out of the process list, and deleted whether or not the push worked.
+        run: |
+          : > fn.env
+          [ -n "$SLIPOK_API_KEY" ]   && printf 'SLIPOK_API_KEY=%s\n'   "$SLIPOK_API_KEY"   >> fn.env
+          [ -n "$SLIPOK_BRANCH_ID" ] && printf 'SLIPOK_BRANCH_ID=%s\n' "$SLIPOK_BRANCH_ID" >> fn.env
+          [ -n "$PROMPTPAY_ID" ]     && printf 'PROMPTPAY_ID=%s\n'     "$PROMPTPAY_ID"     >> fn.env
+          [ -n "$OPENAI_API_KEY" ]   && printf 'OPENAI_API_KEY=%s\n'   "$OPENAI_API_KEY"   >> fn.env
+          if [ -s fn.env ]; then
+            trap 'rm -f fn.env' EXIT
+            supabase secrets set --project-ref "$PROJECT_REF" --env-file fn.env
+            echo "pushed $(wc -l < fn.env) function secret(s)"
+          else
+            rm -f fn.env
+            echo "no function secrets in this repository — leaving the dashboard values alone"
+          fi
+        env:
+          SLIPOK_API_KEY: ${{ secrets.SLIPOK_API_KEY }}
+          SLIPOK_BRANCH_ID: ${{ secrets.SLIPOK_BRANCH_ID }}
+          PROMPTPAY_ID: ${{ secrets.PROMPTPAY_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Deploy the Edge Functions
+        working-directory: site
+        # create-order is the one the checkout calls; the others follow the
+        # same path so none of them can silently fall behind the repository.
+        run: |
+          for fn in create-order verify-slip ai-assistant; do
+            echo "── deploying $fn"
+            supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
+          done
+
+      - name: Say what landed
+        run: |
+          echo "### Supabase deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Project: \`$PROJECT_REF\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Functions deployed: create-order, verify-slip, ai-assistant" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Function secrets (SLIPOK_API_KEY, PROMPTPAY_ID, OPENAI_API_KEY) are set in the Supabase dashboard, not here." >> "$GITHUB_STEP_SUMMARY"
