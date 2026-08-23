@@ -1665,3 +1665,4 @@ main, .site-footer { position: relative; z-index: 1; }
 @media (max-width: 780px) { .settings-form { grid-template-columns: 1fr; } }
 /* Inside a centred card the LINE button follows the card, not the grid. */
 .track-empty .line-help, .track-prompt .line-help { justify-items: center; text-align: center; }
+.settings-readback { margin: 8px 0 0; padding: 8px 11px; border-radius: 7px; background: var(--cream); color: var(--ink-muted); font-size: 10px; }

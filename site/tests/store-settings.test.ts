@@ -11,8 +11,10 @@ async function boot(options: {
   buildId?: string;
   /** Rows the update returns: none is what a blocked write looks like. */
   rowsBack?: { id: boolean }[];
+  /** What Supabase says when the table is missing from its schema cache. */
+  readError?: { message: string } | null;
 }) {
-  const { configured, row = null, buildId = '', rowsBack = [{ id: true }] } = options;
+  const { configured, row = null, buildId = '', rowsBack = [{ id: true }], readError = null } = options;
   vi.resetModules();
   vi.stubEnv('NEXT_PUBLIC_LINE_OA_ID', buildId);
   vi.stubEnv('NEXT_PUBLIC_LINE_OA_LINK', '');
@@ -28,7 +30,7 @@ async function boot(options: {
     supabase: configured
       ? {
           from: () => ({
-            select: () => ({ maybeSingle: async () => ({ data: row }) }),
+            select: () => ({ maybeSingle: async () => ({ data: row, error: readError }) }),
             update,
           }),
         }
@@ -93,5 +95,39 @@ describe('shop settings', () => {
   it('does not call a write the database refused a success', async () => {
     const { mod } = await boot({ configured: true, rowsBack: [] });
     expect(await mod.saveStoreSettings({ phone: '02-000-0000' })).toBe('not-allowed');
+  });
+});
+
+describe('where the settings on screen came from', () => {
+  it('says live once the row has been read', async () => {
+    const { mod } = await boot({
+      configured: true,
+      row: { line_oa_id: '@shop', line_oa_link: null, phone: null, address: null, hours: null, updated_at: '2026-08-23T09:00:00Z' },
+    });
+    const { renderHook: rh, waitFor: wf } = await import('@testing-library/react');
+    const view = rh(() => mod.useSettingsSource());
+    await wf(() => expect(view.result.current.state).toBe('live'));
+    expect(view.result.current.updatedAt).toBe('2026-08-23T09:00:00Z');
+  });
+
+  // The failure that looked like an empty row: a table PostgREST has not
+  // picked up yet is invisible to the API, and swallowing that made a broken
+  // connection and a blank shop address indistinguishable.
+  it('names a read that failed instead of quietly keeping the build values', async () => {
+    const { mod } = await boot({
+      configured: true,
+      readError: { message: "Could not find the table 'public.store_settings' in the schema cache" },
+    });
+    const { renderHook: rh, waitFor: wf } = await import('@testing-library/react');
+    const view = rh(() => mod.useSettingsSource());
+    await wf(() => expect(view.result.current.state).toBe('error'));
+    expect(view.result.current.error).toContain('schema cache');
+  });
+
+  it('says so when there is no database behind it at all', async () => {
+    const { mod } = await boot({ configured: false });
+    const { renderHook: rh, waitFor: wf } = await import('@testing-library/react');
+    const view = rh(() => mod.useSettingsSource());
+    await wf(() => expect(view.result.current.state).toBe('build-only'));
   });
 });

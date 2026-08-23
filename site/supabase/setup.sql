@@ -448,6 +448,12 @@ drop trigger if exists store_settings_touched on public.store_settings;
 create trigger store_settings_touched before update on public.store_settings
   for each row execute procedure public.touch_store_settings();
 
+-- PostgREST caches the schema, and a table it has never seen is invisible to
+-- the API until it reloads — which looks from the browser like a save that
+-- goes nowhere. Asking for the reload here means a new table is usable the
+-- moment this finishes rather than whenever the cache happens to turn over.
+notify pgrst, 'reload schema';
+
 
 -- ═══════════════════════════════════════════════════════
 -- ขั้นสุดท้าย: ตั้งตัวเองเป็นแอดมิน

@@ -45,7 +45,7 @@ import { AdminSales } from './admin-sales';
 import { AdminUpdates } from './admin-updates';
 import { lineBasicId, lineChatUrl } from '../lib/line-oa';
 import { isN8nConfigured } from '../lib/n8n';
-import { saveStoreSettings, useStoreSettings, type SaveResult } from '../lib/store-settings';
+import { saveStoreSettings, useSettingsSource, useStoreSettings, type SaveResult } from '../lib/store-settings';
 import { ImJaiMark } from './brand-logo';
 
 /**
@@ -515,6 +515,7 @@ function ConnectionRows() {
  */
 function EditableShopDetails() {
   const settings = useStoreSettings();
+  const src = useSettingsSource();
   const [draft, setDraft] = useState(settings);
   const [state, setState] = useState<'idle' | 'saving' | SaveResult>('idle');
   const [touched, setTouched] = useState(false);
@@ -547,6 +548,22 @@ function EditableShopDetails() {
     failed: 'ส่งข้อมูลไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง',
   };
 
+  // Proof rather than a claim. "Saved" was shown once while nothing had
+  // changed, so the panel now says what the database itself reports.
+  const readback =
+    src.state === 'error' ? (
+      <p className="settings-bad">อ่านค่าจากฐานข้อมูลไม่ได้ — {src.error}</p>
+    ) : src.state === 'live' ? (
+      <p className="settings-readback">
+        ค่าที่อยู่ในฐานข้อมูลตอนนี้
+        {src.updatedAt ? ` · บันทึกล่าสุด ${new Date(src.updatedAt).toLocaleString('th-TH')}` : ' · ยังไม่เคยถูกบันทึก'}
+      </p>
+    ) : src.state === 'build-only' ? (
+      <p className="settings-bad">ยังไม่ได้เชื่อม Supabase — ค่าที่เห็นมาจากตัวเว็บ ไม่ใช่ฐานข้อมูล</p>
+    ) : (
+      <p className="settings-readback">กำลังอ่านค่าจากฐานข้อมูล…</p>
+    );
+
   return (
     <article>
       <h2>ข้อมูลที่ร้านแก้เองได้</h2>
@@ -555,6 +572,7 @@ function EditableShopDetails() {
       ) : (
         <>
           <p className="admin-hint">บันทึกแล้วมีผลกับหน้าเว็บทันที ไม่ต้องรอ deploy</p>
+          {readback}
           <div className="settings-form">
             <label>
               LINE OA ID

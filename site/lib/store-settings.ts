@@ -24,6 +24,20 @@ export type StoreSettings = {
   hours: string;
 };
 
+/**
+ * What the database actually holds, as opposed to what the form is showing.
+ *
+ * The shop was told a save succeeded while nothing had changed, and had no way
+ * to tell the difference. So the row is reported separately from the merged
+ * settings: `loadedAt` proves a read happened, `updatedAt` is the database's
+ * own record of the last write, and `error` is why there is neither.
+ */
+export type SettingsSource = {
+  state: 'loading' | 'live' | 'build-only' | 'error';
+  updatedAt: string | null;
+  error: string | null;
+};
+
 /** What the build was given, used until the database says otherwise. */
 const FROM_BUILD: StoreSettings = {
   lineOaId: (process.env.NEXT_PUBLIC_LINE_OA_ID ?? '').trim(),
@@ -34,6 +48,7 @@ const FROM_BUILD: StoreSettings = {
 };
 
 let current: StoreSettings = FROM_BUILD;
+let source: SettingsSource = { state: 'loading', updatedAt: null, error: null };
 let loaded = false;
 const listeners = new Set<() => void>();
 
@@ -58,16 +73,35 @@ function merge(row: Record<string, string | null> | null): StoreSettings {
 }
 
 async function load() {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    const { data } = await supabase
-      .from('store_settings')
-      .select('line_oa_id, line_oa_link, phone, address, hours')
-      .maybeSingle();
-    current = merge(data as Record<string, string | null> | null);
+  if (!isSupabaseConfigured || !supabase) {
+    source = { state: 'build-only', updatedAt: null, error: null };
     announce();
-  } catch {
-    // Keep whatever the build shipped rather than blanking the shop's details.
+    return;
+  }
+  try {
+    const { data, error } = await supabase
+      .from('store_settings')
+      .select('line_oa_id, line_oa_link, phone, address, hours, updated_at')
+      .maybeSingle();
+    if (error) {
+      // Named rather than swallowed: "could not find the table in the schema
+      // cache" is a different problem from a row that is simply empty, and
+      // silently keeping the build values made the two look identical.
+      source = { state: 'error', updatedAt: null, error: error.message };
+      announce();
+      return;
+    }
+    const row = data as (Record<string, string | null> & { updated_at?: string }) | null;
+    current = merge(row);
+    source = { state: 'live', updatedAt: row?.updated_at ?? null, error: null };
+    announce();
+  } catch (thrown) {
+    source = {
+      state: 'error',
+      updatedAt: null,
+      error: thrown instanceof Error ? thrown.message : 'unknown error',
+    };
+    announce();
   }
 }
 
@@ -88,6 +122,14 @@ const serverSnapshot = () => FROM_BUILD;
 
 export function useStoreSettings(): StoreSettings {
   return useSyncExternalStore(subscribe, snapshot, serverSnapshot);
+}
+
+const LOADING: SettingsSource = { state: 'loading', updatedAt: null, error: null };
+const sourceSnapshot = () => source;
+
+/** Where the settings on screen came from. For the dashboard, not the site. */
+export function useSettingsSource(): SettingsSource {
+  return useSyncExternalStore(subscribe, sourceSnapshot, () => LOADING);
 }
 
 /**
