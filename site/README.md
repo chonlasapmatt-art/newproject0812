@@ -239,8 +239,11 @@ base path ไม่ได้เขียนตายในโค้ด แต่
 1. รัน SQL ทุกไฟล์ใน `supabase/ci/`
 2. ตั้ง `CORS_ALLOWED_ORIGINS` ให้เอง — **ถ้าไม่ตั้ง ทุก request จากเบราว์เซอร์จะได้ 403**
    ซึ่งหน้าตาเหมือน deploy ไม่สำเร็จทุกประการ
-3. ส่ง function secret ที่มีใน repository ให้ Supabase
-4. Deploy `create-order`, `verify-slip`, `ai-assistant`
+3. ตั้ง Site URL และ Redirect URLs ของ Auth ให้ชี้มาที่เว็บปัจจุบันเสมอ — ไม่งั้นลิงก์
+   ยืนยันอีเมล/รีเซ็ตรหัสผ่านจะพาไปที่ `localhost` หรือโดเมนเก่าที่ตั้งไว้ตอนสร้าง project
+   (อ่านค่าปัจจุบันมาก่อนแล้วค่อยแก้เฉพาะ 2 ช่องนี้ ไม่แตะการตั้งค่า Auth อื่น)
+4. ส่ง function secret ที่มีใน repository ให้ Supabase
+5. Deploy `create-order`, `verify-slip`, `ai-assistant`
 
 ### Secret ที่ต้องมี
 

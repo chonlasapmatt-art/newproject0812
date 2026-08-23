@@ -114,6 +114,66 @@ jobs:
         env:
           SITE_ORIGINS: ${{ vars.SITE_ORIGINS || 'https://chonlasapmatt-art.github.io' }}
 
+      - name: Point Supabase Auth at the site that is actually live
+        working-directory: site
+        # The dashboard's "Site URL" and "Redirect URLs" are what a password
+        # reset or magic-link email actually sends someone to — code has no
+        # say over that at request time. Left pointing at wherever the
+        # project first got set up (a dead preview domain, localhost, an
+        # old fork), the link an email carries goes nowhere useful, no
+        # matter how correct the site itself is.
+        #
+        # Read before writing, and only the two fields this cares about are
+        # touched: this API takes a full config document rather than a true
+        # partial patch in every version this has to keep working against,
+        # so blindly posting a two-field object risks resetting whatever
+        # else is already configured (enabled providers, mailer settings,
+        # session lifetimes) to their defaults. The redirect list is a set
+        # the shop may already be adding to by hand — appended to, never
+        # replaced, so this can run on every deploy without undoing that.
+        run: |
+          set -euo pipefail
+
+          current=$(curl -sS -w '\n%{http_code}' \
+            "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN")
+          code=$(tail -n1 <<< "$current")
+          body=$(sed '$d' <<< "$current")
+
+          if [ "$code" != "200" ]; then
+            echo "::error::could not read the current Auth config (HTTP $code)"
+            echo "$body"
+            exit 1
+          fi
+          if ! jq -e 'has("site_url") and has("uri_allow_list")' >/dev/null <<< "$body"; then
+            echo "::error::the Auth config response did not look like what this step expects — Supabase may have changed the API. Nothing was changed; set Site URL and Redirect URLs by hand in the dashboard for now."
+            echo "$body"
+            exit 1
+          fi
+
+          updated=$(jq --arg site "$SITE_URL" '
+            .site_url = $site
+            | ((.uri_allow_list // "") | split(",") | map(select(length > 0))) as $existing
+            | .uri_allow_list = (($existing + [$site + "/**"]) | unique | join(","))
+          ' <<< "$body")
+
+          result=$(curl -sS -o response.json -w '%{http_code}' \
+            -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$updated")
+
+          if [ "$result" != "200" ]; then
+            echo "::error::updating the Auth config failed (HTTP $result)"
+            cat response.json
+            rm -f response.json
+            exit 1
+          fi
+          rm -f response.json
+          echo "Site URL set to $SITE_URL"
+        env:
+          SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
+
       - name: Pass through any function secrets this repository holds
         working-directory: site
         # Optional. Whichever of these the shop has added as repository secrets
