@@ -43,6 +43,12 @@ jobs:
       # setting to the database, and that wins over this once saved, so this
       # is the value a fresh build starts from rather than the last word.
       NEXT_PUBLIC_LINE_OA_ID: ${{ vars.NEXT_PUBLIC_LINE_OA_ID || '@490ghfyn' }}
+      # The lin.ee link is what the buttons actually open. The basic-ID form,
+      # line.me/R/ti/p/…, is a mobile deep link and answers 404 in a desktop
+      # browser — which is how this looked broken when it was not. The id is
+      # still set because it is what the contact card prints; the link is what
+      # it points at.
+      NEXT_PUBLIC_LINE_OA_LINK: ${{ vars.NEXT_PUBLIC_LINE_OA_LINK || 'https://lin.ee/Ph3KcFO' }}
       NEXT_PUBLIC_ADMIN_PREVIEW_MODE: "false"
       # Deliberately has no fallback: an email address should not sit in a
       # public repository. Set the repository variable to switch the
