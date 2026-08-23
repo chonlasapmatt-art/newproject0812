@@ -11,8 +11,6 @@
  * nothing quietly ships as fact.
  */
 
-import { isLineConfigured, lineBasicId, lineChatUrl } from './line-oa';
-
 export type ContactChannel = {
   id: string;
   label: string;
@@ -79,13 +77,12 @@ export const CONTACT_CHANNELS: ContactChannel[] = [
   {
     id: 'line',
     label: 'LINE Official Account',
-    // One place decides the shop's LINE account: NEXT_PUBLIC_LINE_OA_ID. This
-    // card and every in-context LINE button read the same answer, so setting
-    // it once cannot leave a stale address behind on one page.
-    value: isLineConfigured ? lineBasicId || 'LINE ของร้าน' : '@imjaicafe',
-    href: isLineConfigured ? lineChatUrl() : 'https://line.me/R/ti/p/%40imjaicafe',
+    // The placeholder. The contact page swaps in whatever the shop saved in
+    // the dashboard, so this is only what a brand-new install shows.
+    value: '@imjaicafe',
+    href: 'https://line.me/R/ti/p/%40imjaicafe',
     hint: 'ตอบเร็วที่สุด ทักได้ตลอดเวลาทำการ',
-    placeholder: !isLineConfigured,
+    placeholder: true,
   },
   {
     id: 'phone',

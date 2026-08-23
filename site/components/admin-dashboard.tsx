@@ -43,8 +43,9 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import { STORE_PROFILE, pendingRealData } from '../lib/store-profile';
 import { AdminSales } from './admin-sales';
 import { AdminUpdates } from './admin-updates';
-import { isLineConfigured, lineBasicId } from '../lib/line-oa';
+import { lineBasicId, lineChatUrl } from '../lib/line-oa';
 import { isN8nConfigured } from '../lib/n8n';
+import { saveStoreSettings, useStoreSettings } from '../lib/store-settings';
 import { ImJaiMark } from './brand-logo';
 
 /**
@@ -460,6 +461,9 @@ function Customers({ orders }: { orders: StoredOrder[] }) {
  * live. Half the questions this answers used to be a message to us.
  */
 function ConnectionRows() {
+  const settings = useStoreSettings();
+  const lineOn = Boolean(lineChatUrl(settings.lineOaId, settings.lineOaLink));
+
   const rows: { name: string; on: boolean; detail: string }[] = [
     {
       name: 'ฐานข้อมูล Supabase',
@@ -468,8 +472,10 @@ function ConnectionRows() {
     },
     {
       name: 'LINE Official Account',
-      on: isLineConfigured,
-      detail: isLineConfigured ? `ปุ่มทักไลน์ทำงานแล้ว (${lineBasicId || 'ลิงก์ lin.ee'})` : 'ยังไม่ตั้งค่า — ส่ง LINE OA ID มาแล้วปุ่มทักไลน์จะขึ้นเอง',
+      on: lineOn,
+      detail: lineOn
+        ? `ปุ่มทักไลน์ทำงานแล้ว (${lineBasicId(settings.lineOaId) || 'ลิงก์ lin.ee'})`
+        : 'ยังไม่ตั้งค่า — ใส่ LINE OA ID ข้างล่างนี้ แล้วปุ่มทักไลน์จะขึ้นทุกหน้าเอง',
     },
     {
       name: 'n8n',
@@ -497,10 +503,89 @@ function ConnectionRows() {
   );
 }
 
+/**
+ * The details the shop can change themselves.
+ *
+ * These used to be build settings, which meant every correction was a message
+ * to us and a deploy. Saving here writes to the database and the site picks it
+ * up on the next load — the LINE button appears the moment an id lands.
+ *
+ * Without a database there is nothing to write to, so the form says so rather
+ * than pretending to save.
+ */
+function EditableShopDetails() {
+  const settings = useStoreSettings();
+  const [draft, setDraft] = useState(settings);
+  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
+  const [touched, setTouched] = useState(false);
+
+  // Until the shop starts typing, follow whatever the database reports; the
+  // row arrives after first paint and would otherwise leave the form blank.
+  const shown = touched ? draft : settings;
+
+  const set = (key: keyof typeof settings) => (event: { target: { value: string } }) => {
+    setTouched(true);
+    setDraft({ ...shown, [key]: event.target.value });
+    setState('idle');
+  };
+
+  const save = async () => {
+    setState('saving');
+    const ok = await saveStoreSettings(shown);
+    setState(ok ? 'saved' : 'failed');
+    if (ok) setTouched(false);
+  };
+
+  return (
+    <article>
+      <h2>ข้อมูลที่ร้านแก้เองได้</h2>
+      {!isSupabaseConfigured ? (
+        <p className="admin-hint">ต้องเชื่อม Supabase ก่อนถึงจะบันทึกได้</p>
+      ) : (
+        <>
+          <p className="admin-hint">บันทึกแล้วมีผลกับหน้าเว็บทันที ไม่ต้องรอ deploy</p>
+          <div className="settings-form">
+            <label>
+              LINE OA ID
+              <input value={shown.lineOaId} onChange={set('lineOaId')} placeholder="@imjaicafe" />
+              <small>หาได้ที่ LINE Official Account Manager → ตั้งค่า → ข้อมูลบัญชี → ID</small>
+            </label>
+            <label>
+              หรือลิงก์ lin.ee
+              <input value={shown.lineOaLink} onChange={set('lineOaLink')} placeholder="https://lin.ee/xxxxxxx" />
+              <small>ถ้าใส่ช่องนี้ ระบบจะใช้ลิงก์นี้แทน ID ด้านบน</small>
+            </label>
+            <label>
+              เบอร์โทรร้าน
+              <input value={shown.phone} onChange={set('phone')} placeholder="02-123-4567" />
+            </label>
+            <label>
+              เวลาเปิด–ปิด
+              <input value={shown.hours} onChange={set('hours')} placeholder="ทุกวัน 07:00–20:00 น." />
+            </label>
+            <label className="settings-wide">
+              ที่อยู่ร้าน
+              <textarea rows={2} value={shown.address} onChange={set('address')} placeholder="เลขที่ ถนน แขวง เขต จังหวัด รหัสไปรษณีย์" />
+            </label>
+          </div>
+          <div className="settings-actions">
+            <button type="button" className="primary-button" onClick={() => void save()} disabled={state === 'saving'}>
+              {state === 'saving' ? 'กำลังบันทึก…' : 'บันทึก'}
+            </button>
+            {state === 'saved' && <span className="settings-ok">บันทึกแล้ว</span>}
+            {state === 'failed' && <span className="settings-bad">บันทึกไม่สำเร็จ — ต้องเข้าสู่ระบบด้วยบัญชีแอดมิน</span>}
+          </div>
+        </>
+      )}
+    </article>
+  );
+}
+
 function StoreSettings() {
   return (
     <div className="admin-settings">
       <ConnectionRows />
+      <EditableShopDetails />
       <article>
         <h2>ข้อมูลร้าน</h2>
         <dl>

@@ -1649,3 +1649,19 @@ main, .site-footer { position: relative; z-index: 1; }
 .connection-list em { font-size: 10px; font-style: normal; font-weight: 700; white-space: nowrap; }
 .connection-list li.on em { color: #4f8a4a; }
 .connection-list li.off em { color: #a4732a; }
+
+
+/* --- Details the shop edits ------------------------------------------- */
+.settings-form { margin-top: 14px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 13px; }
+.settings-form label { display: grid; gap: 5px; font-size: 11px; font-weight: 600; color: var(--ink); }
+.settings-form input, .settings-form textarea { min-height: 42px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-family: inherit; font-size: 12px; font-weight: 400; }
+.settings-form textarea { min-height: 62px; resize: vertical; }
+.settings-form input:focus, .settings-form textarea:focus { outline: 2px solid var(--orange); outline-offset: 1px; }
+.settings-form small { color: var(--ink-muted); font-size: 10px; font-weight: 400; line-height: 1.55; }
+.settings-wide { grid-column: 1 / -1; }
+.settings-actions { margin-top: 15px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.settings-ok { color: #4f8a4a; font-size: 11px; font-weight: 700; }
+.settings-bad { color: #a4432f; font-size: 11px; font-weight: 700; }
+@media (max-width: 780px) { .settings-form { grid-template-columns: 1fr; } }
+/* Inside a centred card the LINE button follows the card, not the grid. */
+.track-empty .line-help, .track-prompt .line-help { justify-items: center; text-align: center; }

@@ -3,7 +3,9 @@
 import { motion } from 'motion/react';
 import { Clock3, MapPin, MessageCircle, Phone } from 'lucide-react';
 import { DURATION, EASE, useMotionOK } from '../lib/motion';
+import { lineBasicId, lineChatUrl } from '../lib/line-oa';
 import { CONTACT_CHANNELS, STORE_PROFILE } from '../lib/store-profile';
+import { useStoreSettings } from '../lib/store-settings';
 import { ImJaiMark } from './brand-logo';
 import { Tilt } from './tilt';
 
@@ -36,6 +38,8 @@ export function ContactPage() {
   // The address wraps to several lines while the others fit on one, so it goes
   // last and spans two columns. Left in source order it stretched its whole row
   // and left a hole beside the short cards.
+  const settings = useStoreSettings();
+  const liveLineUrl = lineChatUrl(settings.lineOaId, settings.lineOaLink);
   const quickChannels = CONTACT_CHANNELS.filter((channel) => channel.id !== 'address');
   const address = CONTACT_CHANNELS.find((channel) => channel.id === 'address');
 
@@ -63,13 +67,18 @@ export function ContactPage() {
 
         {quickChannels.map((channel, index) => {
           const Icon = ICONS[channel.id] ?? MessageCircle;
+          // The shop edits its LINE account in the dashboard, so this card
+          // shows what they saved rather than what the build was given.
+          const live = channel.id === 'line' && liveLineUrl
+            ? { ...channel, value: lineBasicId(settings.lineOaId) || channel.value, href: liveLineUrl, placeholder: false }
+            : channel;
           const body = (
-            <article className={`contact-card ${channel.id === 'line' ? 'is-primary' : ''}`}>
+            <article className={`contact-card ${live.id === 'line' ? 'is-primary' : ''}`}>
               <span className="contact-icon" aria-hidden><Icon size={21} /></span>
               <div>
-                <p className="contact-label">{channel.label}</p>
-                <b className="contact-value">{channel.value}</b>
-                {channel.hint && <small>{channel.hint}</small>}
+                <p className="contact-label">{live.label}</p>
+                <b className="contact-value">{live.value}</b>
+                {live.hint && <small>{live.hint}</small>}
               </div>
             </article>
           );
@@ -77,11 +86,11 @@ export function ContactPage() {
           return (
             <motion.div {...rise(0.06 * (index + 1))} data-reveal key={channel.id}>
               <Tilt strength={7} lift={10}>
-                {channel.href ? (
+                {live.href ? (
                   <a
                     className="contact-link"
-                    href={channel.href}
-                    {...(channel.href.startsWith('http') ? { target: '_blank', rel: 'noreferrer' } : {})}
+                    href={live.href}
+                    {...(live.href.startsWith('http') ? { target: '_blank', rel: 'noreferrer' } : {})}
                   >
                     {body}
                   </a>

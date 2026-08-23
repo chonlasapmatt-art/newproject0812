@@ -38,6 +38,11 @@ jobs:
       # the repository variables to point the site at a different project.
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://vshufucommkfgmdtaodq.supabase.co' }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_3kIomZXqcYrSbEURkP7K4Q_0OxNBczz' }}
+      # The shop's LINE account. Public by nature — it is printed on the
+      # contact page for customers to tap. The dashboard writes the same
+      # setting to the database, and that wins over this once saved, so this
+      # is the value a fresh build starts from rather than the last word.
+      NEXT_PUBLIC_LINE_OA_ID: ${{ vars.NEXT_PUBLIC_LINE_OA_ID || '@490ghfyn' }}
       NEXT_PUBLIC_ADMIN_PREVIEW_MODE: "false"
       # Deliberately has no fallback: an email address should not sit in a
       # public repository. Set the repository variable to switch the

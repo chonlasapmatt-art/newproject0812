@@ -1,7 +1,8 @@
 'use client';
 
 import { MessageCircle } from 'lucide-react';
-import { isLineConfigured, lineChatUrl, lineHintFor, lineLabelFor, type LineContext } from '../lib/line-oa';
+import { lineChatUrl, lineHintFor, lineLabelFor, type LineContext } from '../lib/line-oa';
+import { useStoreSettings } from '../lib/store-settings';
 
 /**
  * The way out when something goes wrong.
@@ -10,9 +11,9 @@ import { isLineConfigured, lineChatUrl, lineHintFor, lineLabelFor, type LineCont
  * page, and on contact — rather than only in the footer. Someone whose slip was
  * rejected at nine at night should not have to go looking for how to ask.
  *
- * Renders nothing until the shop's LINE id is configured. A button that opens
- * an empty chat teaches the customer the shop does not answer, which is worse
- * than not offering it.
+ * Renders nothing until the shop has saved a LINE id. A button that opens an
+ * empty chat teaches the customer the shop does not answer, which is worse
+ * than not offering it at all.
  */
 
 type Props = {
@@ -22,11 +23,13 @@ type Props = {
 };
 
 export function LineButton({ context, tone = 'quiet' }: Props) {
-  if (!isLineConfigured) return null;
+  const settings = useStoreSettings();
+  const url = lineChatUrl(settings.lineOaId, settings.lineOaLink);
+  if (!url) return null;
 
   return (
     <div className={`line-help line-${tone}`}>
-      <a href={lineChatUrl()} target="_blank" rel="noreferrer">
+      <a href={url} target="_blank" rel="noreferrer">
         <MessageCircle size={17} /> {lineLabelFor(context)}
       </a>
       <small>{lineHintFor(context)}</small>

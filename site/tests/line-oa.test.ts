@@ -1,39 +1,32 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-
-async function load(env: Record<string, string>) {
-  vi.resetModules();
-  vi.stubEnv('NEXT_PUBLIC_LINE_OA_ID', env.id ?? '');
-  vi.stubEnv('NEXT_PUBLIC_LINE_OA_LINK', env.link ?? '');
-  return import('../lib/line-oa');
-}
-
-afterEach(() => vi.unstubAllEnvs());
+import { describe, expect, it } from 'vitest';
+import { lineBasicId, lineChatUrl, lineHintFor } from '../lib/line-oa';
 
 describe('the shop LINE account', () => {
-  it('is off until an id is given, so no button opens an empty chat', async () => {
-    const line = await load({});
-    expect(line.isLineConfigured).toBe(false);
-    expect(line.lineChatUrl()).toBe('');
+  // Blank means "show no button". A LINE link that opens nothing teaches the
+  // customer the shop does not answer.
+  it('produces no link until the shop has saved an id', () => {
+    expect(lineChatUrl('', '')).toBe('');
+    expect(lineChatUrl('   ', '  ')).toBe('');
   });
 
-  it('accepts the id with or without the @ the shop happens to type', async () => {
-    expect((await load({ id: 'imjaicafe' })).lineBasicId).toBe('@imjaicafe');
-    expect((await load({ id: '@imjaicafe' })).lineBasicId).toBe('@imjaicafe');
+  it('accepts the id with or without the @ the shop happens to type', () => {
+    expect(lineBasicId('imjaicafe')).toBe('@imjaicafe');
+    expect(lineBasicId('@imjaicafe')).toBe('@imjaicafe');
+    expect(lineBasicId('  imjaicafe  ')).toBe('@imjaicafe');
   });
 
-  it('builds an add-friend link that works for new and existing followers', async () => {
-    const line = await load({ id: '@imjaicafe' });
-    expect(line.lineChatUrl()).toBe('https://line.me/R/ti/p/%40imjaicafe');
+  it('builds an add-friend link that works for new and existing followers', () => {
+    expect(lineChatUrl('@imjaicafe')).toBe('https://line.me/R/ti/p/%40imjaicafe');
+    expect(lineChatUrl('imjaicafe')).toBe('https://line.me/R/ti/p/%40imjaicafe');
   });
 
-  it('uses a lin.ee short link as given when the shop has one', async () => {
-    const line = await load({ id: '@ignored', link: 'https://lin.ee/AbCdEf' });
-    expect(line.lineChatUrl()).toBe('https://lin.ee/AbCdEf');
+  it('prefers a lin.ee short link when the shop has pasted one', () => {
+    expect(lineChatUrl('@ignored', 'https://lin.ee/AbCdEf')).toBe('https://lin.ee/AbCdEf');
   });
 
-  it('tells the customer to quote the order number when there is one', async () => {
-    const line = await load({ id: '@imjaicafe' });
-    expect(line.lineHintFor({ kind: 'order', orderNumber: 'IMJ-0042' })).toContain('IMJ-0042');
-    expect(line.lineHintFor({ kind: 'general' })).not.toContain('IMJ-');
+  it('tells the customer to quote the order number when there is one', () => {
+    expect(lineHintFor({ kind: 'order', orderNumber: 'IMJ-0042' })).toContain('IMJ-0042');
+    expect(lineHintFor({ kind: 'payment', orderNumber: 'IMJ-0042' })).toContain('IMJ-0042');
+    expect(lineHintFor({ kind: 'general' })).not.toContain('IMJ-');
   });
 });

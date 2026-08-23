@@ -7,6 +7,8 @@ import { LayoutDashboard, Menu, ShoppingBag, X } from 'lucide-react';
 import { useState } from 'react';
 import { useCan } from '../lib/session';
 import { SHOP_LINE, SHOP_LINE_URL, SHOP_PHONE, STORE_PROFILE } from '../lib/store-profile';
+import { lineBasicId, lineChatUrl } from '../lib/line-oa';
+import { useStoreSettings } from '../lib/store-settings';
 import { useCartStore } from '../stores/cart-store';
 import { AccountMenu } from './account-menu';
 import { BackToTop } from './back-to-top';
@@ -37,6 +39,16 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   // The dashboard link is only rendered for staff. The page guards itself as
   // well — hiding a link is presentation, not access control.
   const { isAdmin, isSignedIn } = useCan();
+
+  // The footer prints what the shop saved in the dashboard, and only falls
+  // back to the values the build shipped where they have not filled one in.
+  const settings = useStoreSettings();
+  const shopPhone = settings.phone || SHOP_PHONE;
+  const shopAddress = settings.address || STORE_PROFILE.location.address;
+  const shopHours = settings.hours || `${STORE_PROFILE.hours.note} ${STORE_PROFILE.hours.everyday}`;
+  const savedLineUrl = lineChatUrl(settings.lineOaId, settings.lineOaLink);
+  const shopLineUrl = savedLineUrl || SHOP_LINE_URL;
+  const shopLineName = lineBasicId(settings.lineOaId) || SHOP_LINE;
 
   // The dashboard is a working screen, not a page of the shop: the customer
   // assistant and the marketing footer are noise behind a till.
@@ -98,13 +110,13 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           </div>
           <div>
             <b>แวะมาหาเรา</b>
-            <span>{STORE_PROFILE.location.address}</span>
-            <span>{STORE_PROFILE.hours.note} {STORE_PROFILE.hours.everyday}</span>
+            <span>{shopAddress}</span>
+            <span>{shopHours}</span>
           </div>
           <div>
             <b>ติดต่อ</b>
-            <a href={`tel:${SHOP_PHONE.replace(/\D/g, '')}`}>{SHOP_PHONE}</a>
-            <a href={SHOP_LINE_URL} rel="noreferrer" target="_blank">LINE {SHOP_LINE}</a>
+            <a href={`tel:${shopPhone.replace(/\D/g, '')}`}>{shopPhone}</a>
+            <a href={shopLineUrl} rel="noreferrer" target="_blank">LINE {shopLineName}</a>
           </div>
           {/* story.since is stated in the Buddhist era, as the about page shows it. */}
           <p>© {STORE_PROFILE.story.since - 543} {STORE_PROFILE.name}</p>

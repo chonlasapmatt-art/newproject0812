@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { useMemo, useState, type CSSProperties } from 'react';
 import { rise } from '../lib/motion';
 import { SHOP_PHONE } from '../lib/store-profile';
+import { useStoreSettings } from '../lib/store-settings';
 import {
   flowFor,
   ordersForAccount,
@@ -135,6 +136,9 @@ export function TrackPage() {
   const params = useSearchParams();
   const session = useSession();
   const orders = useOrders();
+  // Whatever the shop saved in the dashboard, falling back to what shipped.
+  const settings = useStoreSettings();
+  const shopPhone = settings.phone || SHOP_PHONE;
 
   const requested = params.get('order') ?? '';
   const created = params.get('created') === '1';
@@ -217,7 +221,7 @@ export function TrackPage() {
             <motion.div className="track-empty" key="empty" {...rise}>
               <span>🧾</span>
               <h2>ยังไม่พบออเดอร์นี้</h2>
-              <p>ตรวจเลขออเดอร์และเบอร์โทรอีกครั้ง หรือติดต่อร้านที่ {SHOP_PHONE}</p>
+              <p>ตรวจเลขออเดอร์และเบอร์โทรอีกครั้ง หรือติดต่อร้านที่ {shopPhone}</p>
               {session.status !== 'signed-in' && (
                 <Link prefetch={false} className="primary-button" href="/account">เข้าสู่ระบบเพื่อดูออเดอร์ของคุณ</Link>
               )}
