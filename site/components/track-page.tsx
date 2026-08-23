@@ -15,6 +15,7 @@ import {
   type StoredOrder,
 } from '../lib/orders';
 import { useSession } from '../lib/session';
+import { LineButton } from './line-button';
 
 /**
  * Where an order is, from the customer's side.
@@ -211,7 +212,7 @@ export function TrackPage() {
 
         <AnimatePresence mode="wait">
           {order ? (
-            <motion.div key="order" {...rise}><OrderCard order={order} /></motion.div>
+            <motion.div key="order" {...rise}><OrderCard order={order} /><LineButton context={{ kind: 'order', orderNumber: order.orderNumber }} tone="loud" /></motion.div>
           ) : query ? (
             <motion.div className="track-empty" key="empty" {...rise}>
               <span>🧾</span>
@@ -220,6 +221,7 @@ export function TrackPage() {
               {session.status !== 'signed-in' && (
                 <Link prefetch={false} className="primary-button" href="/account">เข้าสู่ระบบเพื่อดูออเดอร์ของคุณ</Link>
               )}
+              <LineButton context={{ kind: 'general' }} />
             </motion.div>
           ) : (
             <motion.div className="track-prompt" key="prompt" {...rise}>

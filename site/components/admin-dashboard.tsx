@@ -43,6 +43,8 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import { STORE_PROFILE, pendingRealData } from '../lib/store-profile';
 import { AdminSales } from './admin-sales';
 import { AdminUpdates } from './admin-updates';
+import { isLineConfigured, lineBasicId } from '../lib/line-oa';
+import { isN8nConfigured } from '../lib/n8n';
 import { ImJaiMark } from './brand-logo';
 
 /**
@@ -450,9 +452,55 @@ function Customers({ orders }: { orders: StoredOrder[] }) {
   );
 }
 
+/**
+ * What the site is actually connected to.
+ *
+ * Every one of these is a build setting, so the shop cannot flip them here —
+ * but they can see, without asking, whether the thing they handed over is
+ * live. Half the questions this answers used to be a message to us.
+ */
+function ConnectionRows() {
+  const rows: { name: string; on: boolean; detail: string }[] = [
+    {
+      name: 'ฐานข้อมูล Supabase',
+      on: isSupabaseConfigured,
+      detail: isSupabaseConfigured ? 'เชื่อมแล้ว — บัญชีและสิทธิ์อ่านจากฐานข้อมูลจริง' : 'ยังไม่เชื่อม — ข้อมูลอยู่ในเบราว์เซอร์เครื่องนี้เท่านั้น',
+    },
+    {
+      name: 'LINE Official Account',
+      on: isLineConfigured,
+      detail: isLineConfigured ? `ปุ่มทักไลน์ทำงานแล้ว (${lineBasicId || 'ลิงก์ lin.ee'})` : 'ยังไม่ตั้งค่า — ส่ง LINE OA ID มาแล้วปุ่มทักไลน์จะขึ้นเอง',
+    },
+    {
+      name: 'n8n',
+      on: isN8nConfigured,
+      detail: isN8nConfigured ? 'ออเดอร์ใหม่และผลตรวจสลิปถูกส่งเข้า n8n' : 'ยังไม่ตั้งค่า — ส่ง Production webhook URL มาแล้วจะเริ่มส่งให้',
+    },
+  ];
+
+  return (
+    <article>
+      <h2>การเชื่อมต่อ</h2>
+      <ul className="connection-list">
+        {rows.map((row) => (
+          <li key={row.name} className={row.on ? 'on' : 'off'}>
+            <span className="connection-dot" aria-hidden />
+            <div>
+              <b>{row.name}</b>
+              <small>{row.detail}</small>
+            </div>
+            <em>{row.on ? 'เชื่อมแล้ว' : 'ยังไม่ตั้งค่า'}</em>
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
 function StoreSettings() {
   return (
     <div className="admin-settings">
+      <ConnectionRows />
       <article>
         <h2>ข้อมูลร้าน</h2>
         <dl>

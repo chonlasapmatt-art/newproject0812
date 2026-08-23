@@ -12,6 +12,8 @@ import { cartTotals, lineTotal } from '../lib/cart';
 import { STORE } from '../lib/catalog';
 import { decodeSlipImage } from '../lib/decode-slip-image';
 import { getOrderRef, getServerOrderRef, renewOrderRef, subscribeOrderRef } from '../lib/order-ref';
+import { LineButton } from './line-button';
+import { notify } from '../lib/n8n';
 import { addOrder, type StoredOrder } from '../lib/orders';
 import { rise } from '../lib/motion';
 import { buildPromptPayPayload, describeAmount } from '../lib/promptpay';
@@ -130,13 +132,24 @@ export function CheckoutPage() {
     const draft: StoredOrder = { orderNumber, idempotencyKey, ...values, lines, totals, payableAmount: charge?.payable ?? totals.total, slipReference: slipScan?.state === 'read' ? slipScan.reference : null, paymentNote: null, status: 'pending', createdAt: new Date().toISOString(), paymentStatus: values.payment === 'promptpay' ? 'pending_verification' : 'unpaid', accountEmail: session.user?.email ?? null };
     try {
       if (isSupabaseConfigured && supabase) {
-        const { data, error } = await supabase.functions.invoke('create-order', { body: { idempotencyKey, customer: { name: values.name, phone: values.phone }, fulfilment: values.fulfilment, address: values.address, note: values.note, paymentMethod: values.payment, coupon: values.coupon, items: lines.map((line) => ({ sku: line.sku, quantity: line.quantity, options: line.options, addOns: line.addOns?.map((item) => item.name), note: line.note })) } });
-        if (error) throw error;
-        draft.orderNumber = data.orderNumber;
+        // The server is asked first, because it is the only place that can
+        // price an order nobody can argue with. But it is not allowed to lose
+        // the sale: if the function is missing or unreachable, the order still
+        // stands on the number this browser generated, and reaches the kitchen
+        // through n8n. `synced` records which of the two happened, so the
+        // dashboard can say so rather than quietly showing less than the truth.
+        try {
+          const { data, error } = await supabase.functions.invoke('create-order', { body: { idempotencyKey, customer: { name: values.name, phone: values.phone }, fulfilment: values.fulfilment, address: values.address, note: values.note, paymentMethod: values.payment, coupon: values.coupon, items: lines.map((line) => ({ sku: line.sku, quantity: line.quantity, options: line.options, addOns: line.addOns?.map((item) => item.name), note: line.note })) } });
+          if (error) throw error;
+          if (data?.orderNumber) draft.orderNumber = data.orderNumber;
+          draft.synced = true;
+        } catch {
+          draft.synced = false;
+        }
 
         // Ask the bank about the slip. A failure here must not lose the order:
         // it is already placed, and an unverified payment simply waits for staff.
-        if (slipScan?.state === 'read') {
+        if (draft.synced && slipScan?.state === 'read') {
           try {
             const verified = await supabase.functions.invoke('verify-slip', {
               body: { orderNumber: draft.orderNumber, slipReference: slipScan.reference },
@@ -148,9 +161,14 @@ export function CheckoutPage() {
           } catch {
             draft.paymentNote = 'ยังตรวจสลิปกับธนาคารไม่ได้ พนักงานจะตรวจสอบให้';
           }
+        } else if (!draft.synced && slipScan?.state === 'read') {
+          draft.paymentNote = 'ยังตรวจสลิปกับธนาคารไม่ได้ พนักงานจะตรวจสอบให้';
         }
       }
       addOrder(draft);
+      // The shop watches n8n, so this is how they learn someone is waiting.
+      // It must not be able to hold up the redirect or fail the order.
+      void notify('order.placed', draft);
       setCoupon(values.coupon ?? ''); clear(); renewOrderRef();
       router.push(`/track?order=${encodeURIComponent(draft.orderNumber)}&created=1`);
     } catch {
@@ -168,7 +186,7 @@ export function CheckoutPage() {
         <section {...cardProps(3)}><div className="form-card-title"><span>3</span><div><h2>วิธีชำระเงิน</h2><p>ร้านจะยืนยันการชำระเงินหลังตรวจสอบแล้ว</p></div></div><div className="payment-options"><label className={payment === 'cash' ? 'selected' : ''}><input type="radio" value="cash" {...register('payment')} /><span>💵</span><div><b>เงินสดตอนรับอาหาร</b><small>ชำระเมื่อรับที่ร้านหรือปลายทาง</small></div></label><label className={payment === 'promptpay' ? 'selected' : ''}><input type="radio" value="promptpay" {...register('payment')} /><QrCode /><div><b>พร้อมเพย์ QR</b><small>อัปโหลดสลิปเพื่อรอตรวจสอบ</small></div></label></div><AnimatePresence>{payment === 'promptpay' && <motion.div className="promptpay-panel" {...rise}>{charge ? <PromptPayCard payload={charge.payload} amountDisplay={charge.display} accountName={promptPayName} orderNumber={orderRef?.orderNumber} /> : <div className="qr-placeholder"><QrCode /><span>QR ร้านค้า</span><small>{promptPayId ? 'กำลังเตรียม…' : 'ยังไม่ได้ตั้งค่า PROMPTPAY_ID'}</small></div>}<div><b>สแกน QR แล้วอัปโหลดสลิปเพื่อยืนยันอัตโนมัติ</b><p>ยอดชำระ {charge ? `฿${charge.display}` : `฿${totals.total}`}</p><label className="slip-upload">อัปโหลดสลิป (JPG, PNG หรือ WebP ไม่เกิน 5MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void onSlipChange(event.target.files?.[0] ?? null); }} /></label>{slip && <small className="valid-file"><CheckCircle2 /> {slip.name}</small>}{slipScan?.state === 'scanning' && <small className="slip-status">กำลังอ่าน QR บนสลิป…</small>}{slipScan?.state === 'read' && <small className="slip-status ok">อ่าน QR บนสลิปได้แล้ว ระบบจะตรวจยอดกับธนาคารอัตโนมัติ</small>}{slipScan?.state === 'unreadable' && <small className="slip-status warn">อ่าน QR บนสลิปไม่ได้ พนักงานจะตรวจสอบให้ภายหลัง</small>}</div></motion.div>}</AnimatePresence></section>
         <section {...cardProps(4)}><div className="form-card-title"><span>4</span><div><h2>หมายเหตุ</h2><p>รายละเอียดเพิ่มเติมสำหรับร้านหรือคนส่ง</p></div></div><label className="full-field"><textarea {...register('note')} rows={3} placeholder="เช่น โทรก่อนถึง ฝากไว้ที่ล็อบบี้" /></label></section>
       </div>
-      <aside className="order-summary"><h2>สรุปออเดอร์</h2><div className="summary-lines">{lines.map((line) => <div key={line.id}><span className="summary-emoji">{line.emoji}</span><div><b>{line.name}</b><small>{line.quantity} × ฿{line.unitPrice}{line.options?.length ? ` · ${line.options.join(', ')}` : ''}</small></div><strong>฿{lineTotal(line)}</strong></div>)}</div><label className="summary-coupon">คูปอง<input {...register('coupon')} placeholder="IMJAI15" /></label><dl><div><dt>ยอดสินค้า</dt><dd>฿{totals.subtotal}</dd></div><div><dt>ส่วนลด</dt><dd>-฿{totals.discount}</dd></div><div><dt>ค่าจัดส่ง</dt><dd>{totals.deliveryFee ? `฿${totals.deliveryFee}` : 'ฟรี'}</dd></div><div className="summary-total"><dt>ยอดรวมสุทธิ</dt><dd>฿{totals.total}</dd></div></dl>{totals.subtotal < STORE.minimumOrder && <p className="order-warning">ยอดสั่งซื้อขั้นต่ำ ฿{STORE.minimumOrder} กรุณาเพิ่มอีก ฿{STORE.minimumOrder - totals.subtotal}</p>}{payment === 'promptpay' && !slip && <p className="order-warning">กรุณาอัปโหลดสลิปก่อนส่งออเดอร์</p>}{!canOrder && <Link prefetch={false} className="signin-gate" href="/account"><b>เข้าสู่ระบบก่อนสั่งซื้อ</b><small>ใช้เวลาไม่ถึงนาที แล้วคุณจะติดตามออเดอร์และดูประวัติย้อนหลังได้</small></Link>}<button className="place-order" disabled={!canOrder || submitting || totals.subtotal < STORE.minimumOrder || (payment === 'promptpay' && !slip)}>{submitting ? 'กำลังส่งออเดอร์…' : canOrder ? `ยืนยันออเดอร์ · ฿${totals.total}` : 'เข้าสู่ระบบเพื่อสั่งซื้อ'}</button><p className="secure-note"><ShieldCheck /> ราคาและสิทธิ์ส่วนลดจะตรวจซ้ำที่ระบบร้าน การชำระเงินจะแสดง “รอตรวจสอบ” จนกว่าพนักงานยืนยัน</p></aside>
+      <aside className="order-summary"><h2>สรุปออเดอร์</h2><div className="summary-lines">{lines.map((line) => <div key={line.id}><span className="summary-emoji">{line.emoji}</span><div><b>{line.name}</b><small>{line.quantity} × ฿{line.unitPrice}{line.options?.length ? ` · ${line.options.join(', ')}` : ''}</small></div><strong>฿{lineTotal(line)}</strong></div>)}</div><label className="summary-coupon">คูปอง<input {...register('coupon')} placeholder="IMJAI15" /></label><dl><div><dt>ยอดสินค้า</dt><dd>฿{totals.subtotal}</dd></div><div><dt>ส่วนลด</dt><dd>-฿{totals.discount}</dd></div><div><dt>ค่าจัดส่ง</dt><dd>{totals.deliveryFee ? `฿${totals.deliveryFee}` : 'ฟรี'}</dd></div><div className="summary-total"><dt>ยอดรวมสุทธิ</dt><dd>฿{totals.total}</dd></div></dl>{totals.subtotal < STORE.minimumOrder && <p className="order-warning">ยอดสั่งซื้อขั้นต่ำ ฿{STORE.minimumOrder} กรุณาเพิ่มอีก ฿{STORE.minimumOrder - totals.subtotal}</p>}{payment === 'promptpay' && !slip && <p className="order-warning">กรุณาอัปโหลดสลิปก่อนส่งออเดอร์</p>}{!canOrder && <Link prefetch={false} className="signin-gate" href="/account"><b>เข้าสู่ระบบก่อนสั่งซื้อ</b><small>ใช้เวลาไม่ถึงนาที แล้วคุณจะติดตามออเดอร์และดูประวัติย้อนหลังได้</small></Link>}<button className="place-order" disabled={!canOrder || submitting || totals.subtotal < STORE.minimumOrder || (payment === 'promptpay' && !slip)}>{submitting ? 'กำลังส่งออเดอร์…' : canOrder ? `ยืนยันออเดอร์ · ฿${totals.total}` : 'เข้าสู่ระบบเพื่อสั่งซื้อ'}</button><p className="secure-note"><ShieldCheck /> ราคาและสิทธิ์ส่วนลดจะตรวจซ้ำที่ระบบร้าน การชำระเงินจะแสดง “รอตรวจสอบ” จนกว่าพนักงานยืนยัน</p><LineButton context={{ kind: 'payment', orderNumber: orderRef?.orderNumber }} /></aside>
     </form>
   </main>;
 }

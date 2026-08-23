@@ -62,6 +62,14 @@ export type StoredOrder = {
   updatedAt?: string;
   /** Who placed it, when an account was signed in. Blank for preview orders. */
   accountEmail?: string | null;
+  /**
+   * True once the server has its own copy.
+   *
+   * False means this order exists only in the browser that placed it — the
+   * kitchen still has it through n8n, but no other device can see it. Absent
+   * on orders stored before this was recorded.
+   */
+  synced?: boolean;
 };
 
 export const ORDER_FLOW: OrderStatus[] = [
