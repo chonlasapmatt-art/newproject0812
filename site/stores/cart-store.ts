@@ -25,13 +25,18 @@ export const useCartStore = create<CartState>()(
       coupon: '',
       open: () => set({ isOpen: true }),
       close: () => set({ isOpen: false }),
+      // Does not open the drawer: FlyToCart already shows the dish landing in
+      // the cart, and a toast (lib/toast.ts, wired in lib/add-to-cart.ts)
+      // confirms it. Forcing the drawer open on every tap used to interrupt
+      // browsing with a full panel for something two lighter-weight signals
+      // already say.
       add: (line) => set((state) => {
         const signature = JSON.stringify([line.sku, line.options ?? [], line.addOns ?? [], line.note ?? '']);
         const existing = state.lines.find((item) => item.id === signature);
         const lines = existing
           ? state.lines.map((item) => item.id === signature ? { ...item, quantity: item.quantity + line.quantity } : item)
           : [...state.lines, { ...line, id: signature }];
-        return { lines, isOpen: true };
+        return { lines };
       }),
       updateQuantity: (id, quantity) => set((state) => ({
         lines: quantity <= 0 ? state.lines.filter((item) => item.id !== id) : state.lines.map((item) => item.id === id ? { ...item, quantity } : item),

@@ -11,6 +11,7 @@ import { claimPendingAdd } from '../lib/add-to-cart';
 import { rise, settle } from '../lib/motion';
 import { previewSignIn, useSession, useSignOut, type SessionUser } from '../lib/session';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { showToast } from '../lib/toast';
 import { useCartStore } from '../stores/cart-store';
 
 const authSchema = z.object({ email: z.string().email('กรุณากรอกอีเมลให้ถูกต้อง'), password: z.string().min(8, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'), name: z.string().optional() });
@@ -31,7 +32,10 @@ export function AccountPage() {
   useEffect(() => {
     if (session.status !== 'signed-in') return;
     const pending = claimPendingAdd();
-    if (pending) addLine(pending.line);
+    if (pending) {
+      addLine(pending.line);
+      showToast(`เพิ่ม${pending.line.name}ลงตะกร้าแล้ว`, 'success');
+    }
     const next = params.get('next');
     if (next?.startsWith('/')) router.replace(next);
   }, [session.status, params, router, addLine]);

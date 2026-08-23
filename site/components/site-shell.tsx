@@ -12,6 +12,7 @@ import { useStoreSettings } from '../lib/store-settings';
 import { useCartStore } from '../stores/cart-store';
 import { AccountMenu } from './account-menu';
 import { BackToTop } from './back-to-top';
+import { BottomNav } from './bottom-nav';
 import { ThemeSwitch } from './theme-switch';
 import { BootScreen } from './boot-screen';
 import { ImJaiMark } from './brand-logo';
@@ -21,6 +22,7 @@ import { PageChrome } from './page-chrome';
 import { ImJaiAssistant } from './imjai-assistant';
 import { RouteTransition } from './route-transition';
 import { TactileLayer } from './tactile-layer';
+import { ToastStack } from './toast-stack';
 
 /** Open to everyone, in the order a customer needs them. */
 const links = [
@@ -100,7 +102,9 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
       <CartDrawer />
       <FlyToCart />
       <TactileLayer />
+      <ToastStack />
       <BackToTop />
+      {!backOfHouse && <BottomNav />}
       {!backOfHouse && <ImJaiAssistant />}
       {!backOfHouse && (
         <footer className="site-footer">

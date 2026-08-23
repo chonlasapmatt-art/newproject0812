@@ -1,7 +1,6 @@
 'use client';
 
 import { AnimatePresence, motion } from 'motion/react';
-import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { DURATION, EASE, useMotionOK } from '../lib/motion';
 
@@ -9,10 +8,18 @@ import { DURATION, EASE, useMotionOK } from '../lib/motion';
  * The opening sequence — the kitchen coming to life before the first plate.
  *
  * A ring draws itself the way a wok is wiped clean, steam rises through it on
- * a canvas, and the whole panel lifts away like a lid. It plays on every
- * visit and every page change, and can be dismissed at any point: an opening
- * a visitor cannot skip is a door that sticks. Kept brief on purpose, since a
- * visitor meets it on every navigation rather than once per session.
+ * a canvas, and the whole panel lifts away like a lid. It plays once per page
+ * load — the very first paint of a visit, including a hard refresh on any
+ * route — and can be dismissed at any point: an opening a visitor cannot skip
+ * is a door that sticks.
+ *
+ * It used to also replay on every client-side navigation, holding the
+ * destination page behind a 1.2s panel each time. That meant a customer
+ * moving Menu → dish → Cart → Checkout hit the splash three more times on the
+ * way to paying — animation deliberately delaying navigation, which is
+ * exactly what this site's own motion principles rule out. `SiteShell`
+ * mounts this once for the whole session, so there is no pathname to key off
+ * any more; it shows itself on mount and never again until the next full load.
  */
 
 /** How long the panel stays before lifting, in ms. */
@@ -96,30 +103,18 @@ function useSteamCanvas(active: boolean, motionOK: boolean) {
 }
 
 export function BootScreen() {
-  const pathname = usePathname();
   const motionOK = useMotionOK();
   const [showing, setShowing] = useState(true);
   const canvasRef = useSteamCanvas(showing, motionOK);
   const dismiss = () => setShowing(false);
 
-  // Raising the panel back up happens here, during render, rather than in an
-  // effect: an effect fires after the new page has already painted, so the
-  // page underneath would flash visible for a frame before the panel caught
-  // up. Setting state mid-render instead means React redoes this render with
-  // the panel already back up, before anything reaches the screen.
-  const [shownFor, setShownFor] = useState(pathname);
-  if (pathname !== shownFor) {
-    setShownFor(pathname);
-    setShowing(true);
-  }
-
-  // Every navigation — including the first — lifts the panel again after a
-  // short hold, so a visitor always sees the shop announce itself before the
-  // page underneath is revealed.
+  // Once, on mount — the first paint of this page load. Lifts the panel
+  // after a short hold so a visitor always sees the shop announce itself,
+  // then gets out of the way for the rest of the session.
   useEffect(() => {
     const timer = window.setTimeout(dismiss, HOLD_MS);
     return () => window.clearTimeout(timer);
-  }, [pathname]);
+  }, []);
 
   // Any keypress leaves, so the sequence never traps keyboard users.
   useEffect(() => {
@@ -128,8 +123,8 @@ export function BootScreen() {
     return () => window.removeEventListener('keydown', dismiss);
   }, [showing]);
 
-  // A quick opening: it plays on every visit now, so it must clear out of
-  // the way fast rather than linger like a once-per-session moment would.
+  // A quick opening: brief enough that meeting it once per page load never
+  // feels like a wait.
   const seconds = motionOK ? DURATION.cinematic * 0.55 : 0.01;
 
   return (

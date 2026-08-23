@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import { Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
 import { cartTotals, lineTotal } from '../lib/cart';
+import { paced, useMotionOK } from '../lib/motion';
+import { showToast } from '../lib/toast';
 import { useCartStore } from '../stores/cart-store';
 
 const money = (value: number) => `฿${value.toLocaleString('th-TH')}`;
@@ -11,6 +13,12 @@ const money = (value: number) => `฿${value.toLocaleString('th-TH')}`;
 export function CartDrawer() {
   const { lines, isOpen, coupon, close, updateQuantity, remove, setCoupon } = useCartStore();
   const totals = cartTotals(lines, false, coupon);
+  const motionOK = useMotionOK();
+
+  const onRemove = (id: string, name: string) => {
+    remove(id);
+    showToast(`นำ${name}ออกจากตะกร้าแล้ว`, 'info');
+  };
 
   return (
     <AnimatePresence>
@@ -24,21 +32,31 @@ export function CartDrawer() {
             ) : (
               <>
                 <div className="cart-lines">
-                  {lines.map((line) => (
-                    <article className="cart-line" key={line.id}>
-                      <div className="cart-line-art">{line.emoji}</div>
-                      <div className="cart-line-copy">
-                        <div className="cart-line-head"><h3>{line.name}</h3><button onClick={() => remove(line.id)} aria-label={`ลบ ${line.name}`}><Trash2 size={16} /></button></div>
-                        {!!line.options?.length && <p>{line.options.join(' · ')}</p>}
-                        {!!line.addOns?.length && <p>เพิ่ม {line.addOns.map((item) => item.name).join(', ')}</p>}
-                        {line.note && <p>หมายเหตุ: {line.note}</p>}
-                        <div className="cart-line-foot">
-                          <div className="quantity-stepper"><button onClick={() => updateQuantity(line.id, line.quantity - 1)} aria-label="ลดจำนวน"><Minus size={14} /></button><span>{line.quantity}</span><button onClick={() => updateQuantity(line.id, line.quantity + 1)} aria-label="เพิ่มจำนวน"><Plus size={14} /></button></div>
-                          <b>{money(lineTotal(line))}</b>
+                  <AnimatePresence initial={false}>
+                    {lines.map((line) => (
+                      <motion.article
+                        className="cart-line"
+                        key={line.id}
+                        layout
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0, transition: { duration: paced(0.18, motionOK) } }}
+                        transition={{ duration: paced(0.26, motionOK) }}
+                      >
+                        <div className="cart-line-art">{line.emoji}</div>
+                        <div className="cart-line-copy">
+                          <div className="cart-line-head"><h3>{line.name}</h3><button onClick={() => onRemove(line.id, line.name)} aria-label={`ลบ ${line.name}`}><Trash2 size={16} /></button></div>
+                          {!!line.options?.length && <p>{line.options.join(' · ')}</p>}
+                          {!!line.addOns?.length && <p>เพิ่ม {line.addOns.map((item) => item.name).join(', ')}</p>}
+                          {line.note && <p>หมายเหตุ: {line.note}</p>}
+                          <div className="cart-line-foot">
+                            <div className="quantity-stepper"><button onClick={() => updateQuantity(line.id, line.quantity - 1)} aria-label="ลดจำนวน"><Minus size={14} /></button><span>{line.quantity}</span><button onClick={() => updateQuantity(line.id, line.quantity + 1)} aria-label="เพิ่มจำนวน"><Plus size={14} /></button></div>
+                            <b>{money(lineTotal(line))}</b>
+                          </div>
                         </div>
-                      </div>
-                    </article>
-                  ))}
+                      </motion.article>
+                    ))}
+                  </AnimatePresence>
                 </div>
                 <div className="cart-summary">
                   <label htmlFor="cart-coupon">คูปอง</label>

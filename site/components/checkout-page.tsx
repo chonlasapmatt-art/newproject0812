@@ -20,6 +20,7 @@ import { buildPromptPayPayload, describeAmount } from '../lib/promptpay';
 import { useCan, useSession } from '../lib/session';
 import { slipReference } from '../lib/slip-verify';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { showToast } from '../lib/toast';
 import { PromptPayCard } from './promptpay-card';
 import { useCartStore } from '../stores/cart-store';
 
@@ -36,6 +37,33 @@ const schema = z.object({
 });
 
 type CheckoutValues = z.infer<typeof schema>;
+
+/**
+ * Where checkout sits in the whole order journey — purely an orientation
+ * marker, not a routed wizard. The four form cards below stay a single page
+ * on purpose: splitting them into real steps would mean re-deriving the
+ * submit and idempotency logic per step, for a form short enough that nobody
+ * asked for that. "ตะกร้า" is already behind the customer by the time they
+ * land here, and this page itself covers both delivery choice and payment.
+ */
+function CheckoutProgress() {
+  const steps: { label: string; state: 'done' | 'current' | 'upcoming' }[] = [
+    { label: 'ตะกร้า', state: 'done' },
+    { label: 'วิธีรับสินค้า', state: 'current' },
+    { label: 'ชำระเงิน', state: 'current' },
+    { label: 'สำเร็จ', state: 'upcoming' },
+  ];
+  return (
+    <ol className="checkout-progress" aria-label="ขั้นตอนการสั่งซื้อ">
+      {steps.map((step) => (
+        <li className={step.state} key={step.label}>
+          <span>{step.state === 'done' && <CheckCircle2 size={13} />}</span>
+          <b>{step.label}</b>
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 export function CheckoutPage() {
   const router = useRouter();
@@ -173,12 +201,13 @@ export function CheckoutPage() {
       router.push(`/track?order=${encodeURIComponent(draft.orderNumber)}&created=1`);
     } catch {
       setSubmitting(false);
-      alert('ยังส่งออเดอร์ไม่ได้ กรุณาลองอีกครั้งหรือติดต่อร้านที่ 099-875-6879');
+      showToast('ยังส่งออเดอร์ไม่ได้ กรุณาลองอีกครั้งหรือติดต่อร้านที่ 099-875-6879', 'error', 5000);
     }
   };
 
   if (!lines.length) return <main className="checkout-empty"><span>🧺</span><h1>ตะกร้ายังว่างอยู่</h1><p>เลือกเมนูที่อยากทานก่อน แล้วค่อยกลับมายืนยันออเดอร์นะคะ</p><Link prefetch={false} className="primary-button" href="/menu">กลับไปเลือกเมนู</Link></main>;
   return <main className="checkout-page"><div className="checkout-heading"><Link prefetch={false} href="/menu"><ChevronLeft /> กลับไปเลือกเมนู</Link><p className="eyebrow">SECURE CHECKOUT</p><h1>ยืนยันความอร่อย</h1><p>ตรวจรายการและเลือกวิธีรับอาหารก่อนส่งออเดอร์</p></div>
+    <CheckoutProgress />
     <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="checkout-layout">
       <div className="checkout-form-stack">
         <section {...cardProps(1)}><div className="form-card-title"><span>1</span><div><h2>ข้อมูลผู้สั่ง</h2><p>ใช้สำหรับติดต่อเรื่องออเดอร์นี้เท่านั้น</p></div></div><div className="field-grid"><label>ชื่อผู้สั่ง<input {...register('name')} autoComplete="name" placeholder="ชื่อ–นามสกุล" />{errors.name && <small>{errors.name.message}</small>}</label><label>เบอร์โทร<input {...register('phone')} inputMode="tel" autoComplete="tel" placeholder="08X-XXX-XXXX" />{errors.phone && <small>{errors.phone.message}</small>}</label></div></section>

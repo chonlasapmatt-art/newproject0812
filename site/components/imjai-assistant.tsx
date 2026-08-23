@@ -260,15 +260,23 @@ export function ImJaiAssistant() {
         )}
       </AnimatePresence>
 
-      <button
+      {/* A slow glow while closed says the assistant is there without asking
+          for attention — no bounce, no loop a customer would find themselves
+          waiting out. It animates box-shadow rather than scale/position on
+          purpose: the button's own box never moves, so it stays exactly as
+          easy to aim a tap at as a button that was not animated at all. Off
+          entirely once open, and under reduced motion. */}
+      <motion.button
         className={`assistant-fab ${open ? 'is-open' : ''}`}
         onClick={() => { focused.current = false; setOpen((value) => !value); }}
         aria-expanded={open}
         aria-label={open ? 'ปิดแชทกับน้องอิ่มใจ' : 'เปิดแชทกับน้องอิ่มใจ'}
+        animate={!open && motionOK ? { boxShadow: ['0 14px 38px rgba(39,55,37,.3)', '0 14px 46px rgba(39,55,37,.5)', '0 14px 38px rgba(39,55,37,.3)'] } : { boxShadow: '0 14px 38px rgba(39,55,37,.3)' }}
+        transition={!open && motionOK ? { duration: 3.6, repeat: Infinity, ease: 'easeInOut' } : { duration: 0 }}
       >
         {open ? <X /> : <Sparkles />}
         <span>{open ? 'ปิดแชท' : 'ถามน้องอิ่มใจ'}</span>
-      </button>
+      </motion.button>
     </>
   );
 }

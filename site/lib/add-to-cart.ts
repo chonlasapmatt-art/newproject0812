@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 import type { CartLine } from './cart';
 import { useCan } from './session';
+import { showToast } from './toast';
 import { useCartStore } from '../stores/cart-store';
 
 /**
@@ -59,6 +60,7 @@ export function useAddToCart() {
     (line: Omit<CartLine, 'id'>): AddResult => {
       if (canOrder) {
         add(line);
+        showToast(`เพิ่ม${line.name}ลงตะกร้าแล้ว`, 'success');
         return 'added';
       }
 

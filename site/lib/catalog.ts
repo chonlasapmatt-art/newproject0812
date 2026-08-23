@@ -17,6 +17,13 @@ export type MenuItem = {
   tone: string;
   options?: { label: string; values: string[] }[];
   addOns?: { name: string; price: number }[];
+  /**
+   * A real photo, once the shop has one — `public/menu/<file>.webp` or a
+   * Supabase Storage URL from the `menu-images` bucket. Every dish ships
+   * without one today, so `DishArt` (components/dish-art.tsx) falls back to
+   * the emoji tile whenever this is unset. Setting it needs no other change.
+   */
+  image?: string;
 };
 
 export const STORE = {

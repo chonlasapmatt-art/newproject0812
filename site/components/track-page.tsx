@@ -5,7 +5,7 @@ import { Ban, Check, ChefHat, Clock3, PackageCheck, Search, Truck } from 'lucide
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState, type CSSProperties } from 'react';
-import { rise } from '../lib/motion';
+import { DURATION, EASE, paced, rise, useMotionOK } from '../lib/motion';
 import { SHOP_PHONE } from '../lib/store-profile';
 import { useStoreSettings } from '../lib/store-settings';
 import {
@@ -87,6 +87,64 @@ function Timeline({ order }: { order: StoredOrder }) {
         );
       })}
     </ol>
+  );
+}
+
+/**
+ * The one moment that says "this worked," shown once above the tracking
+ * card right after checkout redirects here with `?created=1`. The confetti
+ * is a handful of CSS-driven spans, not a library — sixteen pieces, under a
+ * second, gone before anyone would call it a distraction, and skipped
+ * entirely (zero pieces) under reduced motion rather than just slowed down.
+ */
+function OrderSuccessBanner({ order }: { order: StoredOrder }) {
+  const motionOK = useMotionOK();
+  const eta = order.fulfilment === 'delivery' ? '30–45 นาที' : '20–30 นาที';
+
+  const [pieces] = useState(() =>
+    Array.from({ length: motionOK ? 16 : 0 }, (_, index) => ({
+      id: index,
+      x: (Math.random() - 0.5) * 220,
+      y: -60 - Math.random() * 90,
+      rotate: (Math.random() - 0.5) * 220,
+      sage: index % 2 === 0,
+      delay: Math.random() * 0.12,
+    })),
+  );
+
+  return (
+    <motion.div
+      className="order-success"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: paced(DURATION.base, motionOK) }}
+    >
+      <div className="order-success-check" aria-hidden>
+        <svg viewBox="0 0 52 52">
+          <motion.circle
+            cx="26" cy="26" r="23" fill="none" strokeWidth="3" pathLength={1}
+            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
+            transition={{ duration: paced(0.5, motionOK), ease: EASE.enter }}
+          />
+          <motion.path
+            d="M15 27l7 7 15-15" fill="none" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" pathLength={1}
+            initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: paced(0.35, motionOK), delay: paced(0.4, motionOK), ease: EASE.enter }}
+          />
+        </svg>
+        {pieces.map((piece) => (
+          <motion.span
+            key={piece.id}
+            className={`order-success-confetti ${piece.sage ? 'is-sage' : ''}`}
+            initial={{ opacity: 1, x: 0, y: 0, rotate: 0 }}
+            animate={{ opacity: 0, x: piece.x, y: piece.y, rotate: piece.rotate }}
+            transition={{ duration: 0.85, delay: piece.delay, ease: EASE.exit }}
+          />
+        ))}
+      </div>
+      <h2>รับออเดอร์เรียบร้อยแล้ว 🎉</h2>
+      <p>เลขออเดอร์ <b>{order.orderNumber}</b> · เวลาเตรียมโดยประมาณ <b>{eta}</b></p>
+    </motion.div>
   );
 }
 
@@ -216,7 +274,7 @@ export function TrackPage() {
 
         <AnimatePresence mode="wait">
           {order ? (
-            <motion.div key="order" {...rise}><OrderCard order={order} /><LineButton context={{ kind: 'order', orderNumber: order.orderNumber }} tone="loud" /></motion.div>
+            <motion.div key="order" {...rise}>{created && <OrderSuccessBanner order={order} />}<OrderCard order={order} /><LineButton context={{ kind: 'order', orderNumber: order.orderNumber }} tone="loud" /></motion.div>
           ) : query ? (
             <motion.div className="track-empty" key="empty" {...rise}>
               <span>🧾</span>

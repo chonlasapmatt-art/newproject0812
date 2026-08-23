@@ -15,7 +15,10 @@ test('a signed-in customer can browse the menu and add a dish', async ({ page })
   await page.getByRole('button', { name: /เลือกตัวเลือก/ }).first().click();
   await page.getByRole('button', { name: /เพิ่มลงตะกร้า/ }).click();
 
-  await expect(page.getByLabel(/ตะกร้าสินค้า/)).toBeVisible();
+  // A toast confirms the add without taking over the screen — the cart
+  // drawer must not force itself open and cut the customer's browsing short.
+  await expect(page.getByText(/ลงตะกร้าแล้ว/)).toBeVisible();
+  await expect(page.getByLabel(/ตะกร้าสินค้า/)).toHaveCount(0);
 });
 
 test('a guest who taps add is sent to sign in and keeps the dish', async ({ page }) => {
