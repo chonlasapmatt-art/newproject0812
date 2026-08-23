@@ -289,7 +289,12 @@ button { color: inherit; }
 .mobile-nav nav { padding: 24px; display: grid; }
 .mobile-nav nav a { min-height: 58px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); font-family: var(--font-display); font-size: 24px; }
 .mobile-nav-note { margin-top: auto; padding: 28px 24px; background: var(--cream); display: grid; gap: 6px; font-size: 13px; }
-.cart-lines { flex: 1; padding: 8px 24px; overflow-y: auto; }
+/* Sized to what it holds, not stretched to fill the drawer: one dish used
+   to leave a canyon of empty space between it and the summary below, because
+   flex-growing the list is what a *scrolling* cart needs, and a one-item cart
+   was paying that cost for nothing. min-height: 0 is what lets a flex child
+   actually shrink and scroll instead of forcing the drawer taller. */
+.cart-lines { flex: 0 1 auto; min-height: 0; padding: 8px 24px; overflow-y: auto; }
 .cart-line { display: grid; grid-template-columns: 80px 1fr; gap: 15px; padding: 18px 0; border-bottom: 1px solid var(--line); overflow: hidden; }
 .cart-line-art { display: grid; place-items: center; min-height: 84px; border-radius: 3px; background: #eee1cc; font-size: 42px; }
 .cart-line-head, .cart-line-foot { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
@@ -300,7 +305,7 @@ button { color: inherit; }
 .quantity-stepper { width: fit-content; min-height: 36px; border: 1px solid var(--line); border-radius: 999px; display: grid; grid-template-columns: 36px 32px 36px; align-items: center; text-align: center; }
 .quantity-stepper button { height: 100%; border: 0; background: transparent; display: grid; place-items: center; cursor: pointer; }
 .quantity-stepper svg { width: 15px; }
-.cart-summary { padding: 20px 24px 24px; border-top: 1px solid var(--line); background: var(--cream); }
+.cart-summary { margin-top: auto; padding: 20px 24px 24px; border-top: 1px solid var(--line); background: var(--cream); }
 .cart-summary > label { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 750; }
 .coupon-row { display: grid; grid-template-columns: 1fr auto; align-items: center; border: 1px solid var(--line); background: var(--surface); }
 .coupon-row input { width: 100%; min-height: 42px; padding: 0 12px; border: 0; outline: 0; background: transparent; }
