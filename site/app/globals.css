@@ -914,6 +914,7 @@ button { color: inherit; }
 .admin-hint { margin: 0; color: var(--ink-muted); font-size: 11px; line-height: 1.6; }
 
 .admin-filters { margin-top: 22px; display: grid; gap: 12px; }
+.admin-filter-label { margin-bottom: -6px; color: var(--ink-muted); font-size: 10px; font-weight: 750; letter-spacing: .04em; }
 .admin-search { display: flex; align-items: center; gap: 9px; max-width: 420px; min-height: 42px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-muted); }
 .admin-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font-family: inherit; font-size: 12.5px; }
 .admin-chips { display: flex; flex-wrap: wrap; gap: 7px; }
