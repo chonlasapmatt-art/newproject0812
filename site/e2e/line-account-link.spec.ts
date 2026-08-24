@@ -11,7 +11,7 @@ test('a valid LINE link requires the website member to sign in first', async ({ 
   await expect(page.getByRole('heading', { name: 'เข้าสู่ระบบก่อนเชื่อม LINE' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'เข้าสู่ระบบ / สมัครสมาชิก' })).toHaveAttribute(
     'href',
-    /\/account\?next=/,
+    /\/account\/?\?next=/,
   );
   await expect(page.getByText('ใช้ครั้งเดียวและหมดอายุภายใน 10 นาที')).toBeVisible();
 });
