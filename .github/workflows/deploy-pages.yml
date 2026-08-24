@@ -76,6 +76,12 @@ jobs:
 
       - name: Unit tests
         run: npm test
+        env:
+          # These tests exercise the deterministic local-storage fallback.
+          # Supplying the live project here switches the imported order store
+          # into database mode before the tests can seed their fixtures.
+          NEXT_PUBLIC_SUPABASE_URL: ""
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
 
       - name: Install the browser the end-to-end suite drives
         run: npx playwright install --with-deps chromium
