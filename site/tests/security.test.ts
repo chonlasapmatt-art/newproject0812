@@ -62,7 +62,22 @@ describe('security guardrails', () => {
     expect(sql).toContain('revoke all on table public.line_link_nonces from anon, authenticated');
     expect(bridge).toContain("request.headers.get('x-n8n-secret')");
     expect(bridge).toContain(".eq('user_id', link.user_id)");
+    expect(bridge).toContain("action === 'claimNotifications'");
+    expect(bridge).toContain("action === 'ackNotifications'");
     expect(bridge).not.toMatch(/customer_phone|delivery_address/);
     expect(config).toMatch(/\[functions\.line-orders\]\s+verify_jwt = false/);
+
+    const notifications = fs.readFileSync(path.resolve('supabase/ci/006_line_order_notifications.sql'),'utf8');
+    expect(notifications).toContain('for update skip locked');
+    expect(notifications).toContain("auth.role() <> 'service_role'");
+    expect(notifications).toContain('unique(order_id,event_key)');
+    expect(notifications).toContain("p.status='verified'");
+
+    const workflowBuilder = fs.readFileSync(path.resolve('../scripts/build-n8n-line-integration.mjs'),'utf8');
+    expect(workflowBuilder).toContain("path: 'imjai-web-order-events'");
+    expect(workflowBuilder).toContain("'Claim LINE Status Notifications'");
+    expect(workflowBuilder).toContain("'Acknowledge LINE Status'");
+    expect(workflowBuilder).toContain("onError: 'continueErrorOutput'");
+    expect(workflowBuilder).toContain("'Discord Alert (LINE Status)'");
   });
 });
