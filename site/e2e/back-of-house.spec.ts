@@ -57,6 +57,28 @@ test('confirming a slip changes what the customer is told', async ({ page }) => 
   await expect(page.locator('.payment-state.ok')).toContainText('ชำระเงินแล้ว');
 });
 
+test('staff can separate paid and unpaid orders in the live dashboard', async ({ page }) => {
+  await signIn(page, ADMIN_EMAIL);
+  await unlockDashboard(page);
+  await seedOrders(page, [
+    anOrder({ paymentStatus: 'paid' }),
+    anOrder({ orderNumber: 'IJ260821-CASH', idempotencyKey: 'e2e-cash', payment: 'cash', paymentStatus: 'unpaid' }),
+  ]);
+
+  await page.goto('/admin');
+  await page.waitForLoadState('networkidle');
+  await page.getByRole('button', { name: /ออเดอร์$/ }).click();
+  await page.getByRole('button', { name: 'ยังไม่จ่าย (1)' }).click();
+
+  await expect(page.locator('.order-card')).toHaveCount(1);
+  await expect(page.locator('.order-card')).toContainText('IJ260821-CASH');
+  await page.getByRole('button', { name: 'รับเงินสดแล้ว' }).click();
+  await expect(page.locator('.order-card')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'ชำระแล้ว (2)' }).click();
+  await expect(page.locator('.order-card')).toHaveCount(2);
+});
+
 test('a dish marked sold out leaves the menu', async ({ page }) => {
   await signIn(page, ADMIN_EMAIL);
   await unlockDashboard(page);
