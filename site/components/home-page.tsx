@@ -199,28 +199,28 @@ export function HomePage() {
               finishing. */}
           <motion.span
             data-reveal
-            initial={{ opacity: 0, x: -60 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, x: -140, rotate: -18, scale: 0.7 }}
+            whileInView={{ opacity: 1, x: 0, rotate: 0, scale: 1 }}
             viewport={{ once: true, margin: '0px 0px -80px 0px' }}
-            transition={{ duration: motionOK ? 0.55 : 0.01, ease: EASE.enter }}
+            transition={{ duration: motionOK ? 0.7 : 0.01, ease: EASE.enter }}
           >
             <motion.span animate={motionOK ? { y: [0, -7, 0] } : { y: 0 }} transition={drift(3.6)} style={{ display: 'inline-block' }}>☕</motion.span>
           </motion.span>
           <motion.b
             data-reveal
-            initial={{ opacity: 0, scale: 0.5 }}
-            whileInView={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, scale: 0.3, rotate: -25 }}
+            whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
             viewport={{ once: true, margin: '0px 0px -80px 0px' }}
-            transition={{ duration: motionOK ? 0.4 : 0.01, delay: motionOK ? 0.35 : 0, ease: EASE.enter }}
+            transition={{ duration: motionOK ? 0.45 : 0.01, delay: motionOK ? 0.5 : 0, ease: EASE.enter }}
           >
             +
           </motion.b>
           <motion.span
             data-reveal
-            initial={{ opacity: 0, x: 60 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, x: 140, rotate: 18, scale: 0.7 }}
+            whileInView={{ opacity: 1, x: 0, rotate: 0, scale: 1 }}
             viewport={{ once: true, margin: '0px 0px -80px 0px' }}
-            transition={{ duration: motionOK ? 0.55 : 0.01, delay: motionOK ? 0.1 : 0, ease: EASE.enter }}
+            transition={{ duration: motionOK ? 0.7 : 0.01, delay: motionOK ? 0.12 : 0, ease: EASE.enter }}
           >
             <motion.span animate={motionOK ? { y: [0, -7, 0] } : { y: 0 }} transition={drift(4.1, 0.5)} style={{ display: 'inline-block' }}>🥐</motion.span>
           </motion.span>
