@@ -22,15 +22,24 @@ describe('security guardrails', () => {
     expect(createOrder).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(verifySlip).toContain("authClient.auth.getUser(authorization.slice(7))");
     expect(verifySlip).toContain("order.user_id !== account.user.id");
+    expect(verifySlip).toContain('Array.isArray(relatedPayments)');
+    expect(verifySlip).toContain("client.rpc('complete_verified_payment'");
     expect(verifySlip).toContain('verification_attempted_at.lt.${claimCutoff}');
   });
   it('keeps QR totals, original slips and staff changes in the database', () => {
     const sql = fs.readFileSync(path.resolve('supabase/ci/003_secure_order_flow.sql'),'utf8');
     expect(sql).toContain("if v_user is null then raise exception 'authentication required'");
     expect(sql).toContain('payable_amount');
+    expect(sql).toContain('extensions.gen_random_bytes(4)');
     expect(sql).toContain('staff_set_order_status');
     expect(sql).toContain('staff_set_payment_status');
     expect(sql).toContain('supabase_realtime add table public.orders');
+
+    const paymentSync = fs.readFileSync(path.resolve('supabase/ci/005_payment_dashboard_sync.sql'),'utf8');
+    expect(paymentSync).toContain("auth.role() <> 'service_role'");
+    expect(paymentSync).toContain("update public.orders set status='confirmed'");
+    expect(paymentSync).toContain('grant execute on function public.complete_verified_payment');
+    expect(paymentSync).toContain("verified_via=case when p_status='verified' then 'staff'");
 
     const checkout = fs.readFileSync(path.resolve('components/checkout-page.tsx'),'utf8');
     expect(checkout).toContain("storage.from('payment-slips').upload");
@@ -44,7 +53,8 @@ describe('security guardrails', () => {
     const bridge = fs.readFileSync(path.resolve('supabase/functions/line-orders/index.ts'),'utf8');
     const config = fs.readFileSync(path.resolve('supabase/config.toml'),'utf8');
 
-    expect(sql).toContain("encode(digest(v_nonce,'sha256'),'hex')");
+    expect(sql).toContain("encode(extensions.digest(v_nonce,'sha256'),'hex')");
+    expect(sql).toContain('extensions.gen_random_bytes(32)');
     expect(sql).toContain("now()+interval '10 minutes'");
     expect(sql).toContain("auth.role() <> 'service_role'");
     expect(sql).toContain('line account already linked');
