@@ -148,7 +148,14 @@ Deno.serve(async (request) => {
       return new Response('{"error":"order_not_owned"}', { status: 403, headers });
     }
 
-    const payment = (order.payments as Record<string, unknown>[] | null)?.[0];
+    // `payments.order_id` is unique, so PostgREST exposes this relationship
+    // as a to-one object. Keep array support as well because relationship
+    // metadata can differ between local/test projects and production.
+    const relatedPayments = order.payments as
+      | Record<string, unknown>[]
+      | Record<string, unknown>
+      | null;
+    const payment = Array.isArray(relatedPayments) ? relatedPayments[0] : relatedPayments;
     if (!payment) throw new Error('missing_payment_row');
     if (payment.status === 'verified' || payment.status === 'paid') {
       return new Response(JSON.stringify({ status: 'confirmed', reason: 'ยืนยันไปแล้วก่อนหน้านี้' }), { status: 200, headers });
