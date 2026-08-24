@@ -94,6 +94,36 @@ Deno.serve(async (request) => {
       return json(data);
     }
 
+    if (action === 'claimNotifications') {
+      const requested = Number(body.limit ?? 30);
+      const limit = Number.isInteger(requested) ? Math.max(1, Math.min(requested, 50)) : 30;
+      const { data, error } = await admin.rpc('claim_line_order_notifications', { p_limit: limit });
+      if (error) throw error;
+      return json({
+        notifications: (data ?? []).map((row: Record<string, unknown>) => ({
+          id: Number(row.id),
+          lineUserId: String(row.line_user_id ?? ''),
+          event: String(row.event_key ?? ''),
+          orderNumber: String(row.order_number ?? ''),
+          orderStatus: String(row.order_status ?? ''),
+          paymentStatus: String(row.payment_status ?? ''),
+          payableAmount: Number(row.payable_amount ?? 0),
+          paymentNote: String(row.payment_note ?? ''),
+          fulfilment: String(row.fulfilment ?? 'pickup'),
+        })),
+      });
+    }
+
+    if (action === 'ackNotifications') {
+      const ids = Array.isArray(body.ids)
+        ? body.ids.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0).slice(0, 50)
+        : [];
+      if (!ids.length) return json({ error: 'invalid_notification_ids' }, 400);
+      const { data, error } = await admin.rpc('ack_line_order_notifications', { p_ids: ids });
+      if (error) throw error;
+      return json({ acknowledged: Number(data ?? 0) });
+    }
+
     if (action === 'getMyOrders' || action === 'getOrder') {
       const id = lineId(body.lineUserId);
       if (!id) return json({ error: 'invalid_line_user' }, 400);
