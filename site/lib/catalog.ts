@@ -80,3 +80,16 @@ export const MENU_ITEMS: MenuItem[] = [
 ];
 
 export const findMenuItem = (sku: string) => MENU_ITEMS.find((item) => item.sku === sku);
+
+/**
+ * The shop writes a variant's surcharge straight into its label — "ใหญ่ +15"
+ * — rather than a separate field, and the database mirrors that: the name
+ * stored in `menu_item_variants` is that exact string, matched by name when
+ * an order is priced server-side. So the price already lives in every value
+ * that carries one; this reads it back out rather than inventing a second,
+ * easy-to-desync place to keep the same number.
+ */
+export function optionPriceDelta(value: string): number {
+  const surcharge = value.match(/\+\s*(\d+(?:\.\d+)?)\s*$/);
+  return surcharge ? Number(surcharge[1]) : 0;
+}

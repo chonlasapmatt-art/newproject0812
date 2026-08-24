@@ -58,8 +58,13 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
   return (
     <>
       {/* initial={false} keeps the very first page from animating in: arriving
-          at a URL is not a transition, and the opening sequence covers it. */}
-      <AnimatePresence mode="wait" initial={false}>
+          at a URL is not a transition, and the opening sequence covers it.
+          popLayout rather than wait: the outgoing page is pulled out of
+          normal flow the moment the incoming one mounts, so the new page
+          settles in while the old one is still animating away instead of
+          waiting for a full exit first — the same technique the catalog
+          grid already uses to remove a card without the rest jumping. */}
+      <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
           key={pathname}
           className="route-stage"

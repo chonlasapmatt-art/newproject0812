@@ -351,6 +351,18 @@ button { color: inherit; }
 [data-theme='dark'] .menu-toolbar { background: rgba(28,23,20,.94); }
 [data-theme='dark'] .hero { background: var(--cream); }
 [data-theme='dark'] .marquee-strip { background: var(--cream); }
+/* Opposite call from .hero above, on purpose: those stay a bright accent
+   against dark chrome, but a dish's tone is a photo backdrop sitting flush
+   against the product modal's now-dark copy panel — full brightness there
+   reads as an unstyled seam rather than a considered two-tone card. Deepened
+   instead of greyed out, so each dish keeps its own hue rather than all
+   six collapsing toward the same dark neutral. */
+[data-theme='dark'] .coffee, [data-theme='dark'] .cocoa { background: #4a3b2e; }
+[data-theme='dark'] .terra { background: #6b3d24; }
+[data-theme='dark'] .sand { background: #5c4a30; }
+[data-theme='dark'] .olive, [data-theme='dark'] .sage { background: #3c4433; }
+[data-theme='dark'] .mustard { background: #6b5221; }
+[data-theme='dark'] .rose { background: #5c3a37; }
 [data-theme='dark'] .admin-page { background: #17120f; }
 [data-theme='dark'] .modal-backdrop, [data-theme='dark'] .drawer-backdrop { background: rgba(0,0,0,.6); }
 /* The chart marks lift, because a mid-tone fill that cleared 3:1 on paper

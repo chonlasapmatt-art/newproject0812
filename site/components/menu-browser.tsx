@@ -5,7 +5,7 @@ import { Check, ChevronDown, Minus, Plus, Search, SlidersHorizontal, Star, X } f
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
-import { CATEGORIES, type MenuCategory, type MenuItem } from '../lib/catalog';
+import { CATEGORIES, optionPriceDelta, type MenuCategory, type MenuItem } from '../lib/catalog';
 import { settle, useMotionOK } from '../lib/motion';
 import { useMenu, useMenuItem } from '../lib/menu-admin';
 import { DishArt } from './dish-art';
@@ -92,13 +92,19 @@ function ProductModal({ item, onClose }: { item: MenuItem; onClose: () => void }
   const [note, setNote] = useState('');
 
   const selectedAddOns = (item.addOns ?? []).filter((addOn) => addOns.includes(addOn.name));
-  const eachPrice = item.price + selectedAddOns.reduce((sum, addOn) => sum + addOn.price, 0);
-  const submit = () => { addToCart({ sku: item.sku, name: item.name, unitPrice: item.price, quantity, options: Object.values(options), addOns: selectedAddOns, note: note.trim().slice(0, 160), emoji: item.emoji }); onClose(); };
+  // A variant's surcharge (e.g. "ใหญ่ +15") is priced in here rather than left
+  // as a label nobody actually charges for — the database prices it the same
+  // way, via menu_item_variants, so the customer sees the total they will
+  // actually be asked to pay.
+  const optionsTotal = Object.values(options).reduce((sum, value) => sum + optionPriceDelta(value), 0);
+  const unitPrice = item.price + optionsTotal;
+  const eachPrice = unitPrice + selectedAddOns.reduce((sum, addOn) => sum + addOn.price, 0);
+  const submit = () => { addToCart({ sku: item.sku, name: item.name, unitPrice, quantity, options: Object.values(options), addOns: selectedAddOns, note: note.trim().slice(0, 160), emoji: item.emoji }); onClose(); };
 
   return <><motion.button className="modal-backdrop" aria-label="ปิดรายละเอียดเมนู" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /><motion.section className="product-modal" role="dialog" aria-modal="true" aria-label={`รายละเอียด ${item.name}`} {...settle} exit={{ opacity: 0, y: 12, scale: 0.99, transition: { duration: 0.18 } }}>
     <button className="modal-close" onClick={onClose} aria-label="ปิด"><X /></button>
     <div className={`product-modal-art ${item.tone}`}><DishEffects category={item.category} hot={item.hot} />{item.image ? <DishArt src={item.image} alt={item.name} sizes="(max-width: 820px) 100vw, 45vw" /> : <span>{item.emoji}</span>}{item.chefChoice && <em><Star size={13} fill="currentColor" /> Chef&apos;s Choice</em>}</div>
-    <div className="product-modal-copy"><p className="eyebrow">{item.sku}</p><div className="modal-title"><h2>{item.name}</h2><b>฿{item.price}</b></div><p>{item.description}</p><details><summary>ส่วนประกอบและสารก่อภูมิแพ้</summary><p>{item.ingredients}</p><small>{item.allergens.length ? `มี: ${item.allergens.join(', ')}` : 'ไม่ระบุสารก่อภูมิแพ้หลัก'}</small></details>
+    <div className="product-modal-copy"><p className="eyebrow">{item.sku}</p><div className="modal-title"><h2>{item.name}</h2><b>฿{unitPrice}</b></div><p>{item.description}</p><details><summary>ส่วนประกอบและสารก่อภูมิแพ้</summary><p>{item.ingredients}</p><small>{item.allergens.length ? `มี: ${item.allergens.join(', ')}` : 'ไม่ระบุสารก่อภูมิแพ้หลัก'}</small></details>
       {(item.options ?? []).map((group) => <fieldset key={group.label}><legend>{group.label}</legend><div className="option-chips">{group.values.map((value) => <button type="button" className={options[group.label] === value ? 'active' : ''} onClick={() => setOptions((current) => ({ ...current, [group.label]: value }))} key={value}>{options[group.label] === value && <Check size={14} />}{value}</button>)}</div></fieldset>)}
       {!!item.addOns?.length && <fieldset><legend>เพิ่มความอร่อย</legend><div className="addon-list">{item.addOns.map((addOn) => <label key={addOn.name}><input type="checkbox" checked={addOns.includes(addOn.name)} onChange={() => setAddOns((current) => current.includes(addOn.name) ? current.filter((name) => name !== addOn.name) : [...current, addOn.name])} /><span>{addOn.name}</span><b>+฿{addOn.price}</b></label>)}</div></fieldset>}
       <label className="note-field">หมายเหตุถึงครัว<textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={160} placeholder="เช่น ไม่ใส่ผงชูรส แยกน้ำแข็ง" /></label>
