@@ -100,7 +100,7 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 };
 
 export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
-  unpaid: 'ชำระปลายทาง',
+  unpaid: 'ยังไม่จ่าย',
   pending_verification: 'รอตรวจสลิป',
   paid: 'ชำระแล้ว',
   rejected: 'สลิปไม่ผ่าน',
@@ -476,6 +476,9 @@ export function summarise(orders: StoredOrder[], today = new Date()) {
     newOrders: todays.filter((order) => order.status === 'pending').length,
     preparing: live.filter((order) => order.status === 'preparing' || order.status === 'confirmed').length,
     awaitingPayment: live.filter((order) => order.paymentStatus === 'pending_verification').length,
+    paidCount: todays.filter((order) => order.paymentStatus === 'paid').length,
+    unpaidCount: todays.filter((order) => order.paymentStatus === 'unpaid').length,
+    rejectedPaymentCount: todays.filter((order) => order.paymentStatus === 'rejected').length,
     averageBasket: todays.length ? Math.round(revenue / todays.length) : 0,
     /** Null rather than 0% when there is nothing to compare against. */
     changeVsYesterday: previous > 0 ? Math.round(((revenue - previous) / previous) * 100) : null,
