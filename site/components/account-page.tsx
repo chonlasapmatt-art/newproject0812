@@ -13,6 +13,7 @@ import { rise, settle } from '../lib/motion';
 import { previewSignIn, useSession, useSignOut, type SessionUser } from '../lib/session';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { getLineAccountState, unlinkLineAccount, type LineAccountState } from '../lib/line-account';
+import { SITE_URL, safeNextPath } from '../lib/site';
 import { showToast } from '../lib/toast';
 import { ordersForAccount, useOrders, type StoredOrder } from '../lib/orders';
 import { useCartStore } from '../stores/cart-store';
@@ -71,10 +72,14 @@ export function AccountPage() {
     setBusy(true);
     try {
       if (mode === 'forgot') {
-        const { error } = await supabase.auth.resetPasswordForEmail(values.email, { redirectTo: `${location.origin}/account` });
+        const { error } = await supabase.auth.resetPasswordForEmail(values.email, { redirectTo: `${SITE_URL}/account/` });
         if (error) throw error; setMessage('ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลแล้ว');
       } else if (mode === 'register') {
-        const { error } = await supabase.auth.signUp({ email: values.email, password: values.password, options: { data: { full_name: values.name?.trim() } } });
+        // Preserve wherever this signup started (most often the LINE-linking
+        // page) across the email round trip, so confirming doesn't strand the
+        // customer back at square one. With nothing to return to, land on the
+        // home page rather than the bare account page.
+        const { error } = await supabase.auth.signUp({ email: values.email, password: values.password, options: { data: { full_name: values.name?.trim() }, emailRedirectTo: `${SITE_URL}${safeNextPath(params.get('next'))}` } });
         if (error) throw error; setMessage('สมัครแล้ว กรุณาตรวจอีเมลเพื่อยืนยันบัญชี');
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email: values.email, password: values.password });
