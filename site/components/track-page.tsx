@@ -4,18 +4,20 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Ban, Check, ChefHat, Clock3, PackageCheck, Search, Truck } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { DURATION, EASE, paced, rise, useMotionOK } from '../lib/motion';
 import { SHOP_PHONE } from '../lib/store-profile';
 import { useStoreSettings } from '../lib/store-settings';
 import {
   flowFor,
+  fromGuestLookup,
   ordersForAccount,
   useOrders,
   type OrderStatus,
   type StoredOrder,
 } from '../lib/orders';
 import { useSession } from '../lib/session';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { LineButton } from './line-button';
 
 /**
@@ -207,8 +209,12 @@ export function TrackPage() {
   );
 
   // Derived from the live list rather than copied into state, so a status the
-  // kitchen changes lands on this screen straight away.
-  const order = useMemo(() => {
+  // kitchen changes lands on this screen straight away. This only ever finds
+  // an order already in the signed-in session's own realtime cache — which
+  // covers "I just placed this" and "this is my account's order history",
+  // but not a guest, and not anyone looking up an order that is not their
+  // signed-in session's own.
+  const localOrder = useMemo(() => {
     if (!query) return null;
     const wanted = query.order.trim().toLowerCase();
     const digits = query.phone.replace(/\D/g, '');
@@ -220,6 +226,27 @@ export function TrackPage() {
       ) ?? null
     );
   }, [orders, query]);
+
+  // The guest path: order number and phone are what someone with no
+  // session — or a different one from the order's owner — actually has.
+  // Tried only once the local cache has come up empty, since that is the
+  // faster and more complete answer whenever it applies. `lookupKey` is
+  // null whenever there is nothing to look up, which both skips the effect
+  // and — in the `order` line below — stops a stale remote result from a
+  // previous query from showing while cancelled is still settling.
+  const lookupKey = !localOrder && query?.phone.trim() ? query : null;
+  const [remoteOrder, setRemoteOrder] = useState<StoredOrder | null>(null);
+  useEffect(() => {
+    if (!lookupKey || !isSupabaseConfigured || !supabase) return;
+    let cancelled = false;
+    supabase.rpc('lookup_order_by_phone', { p_order_number: lookupKey.order, p_phone: lookupKey.phone }).then(({ data, error }) => {
+      if (cancelled) return;
+      setRemoteOrder(!error && data ? fromGuestLookup(data) : null);
+    });
+    return () => { cancelled = true; };
+  }, [lookupKey]);
+
+  const order = localOrder ?? (lookupKey ? remoteOrder : null);
 
   const mine = useMemo(
     () => ordersForAccount(orders, session.user?.email, session.user?.id).slice(0, 6),

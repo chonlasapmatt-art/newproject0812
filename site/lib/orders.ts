@@ -139,6 +139,15 @@ const addressText = (value: unknown): string | undefined => {
 const paymentRow = (value: DatabaseOrder['payments']): Record<string, unknown> | null =>
   Array.isArray(value) ? value[0] ?? null : value ?? null;
 
+/** `verified` from the database reads as `paid` everywhere on the customer side. */
+const paymentStatusFrom = (raw: unknown): PaymentStatus => {
+  const value = String(raw ?? 'unpaid');
+  if (value === 'verified' || value === 'paid') return 'paid';
+  if (value === 'rejected') return 'rejected';
+  if (value === 'pending_verification') return 'pending_verification';
+  return 'unpaid';
+};
+
 function fromDatabase(row: DatabaseOrder): StoredOrder {
   const payment = paymentRow(row.payments);
   const items = Array.isArray(row.order_items) ? row.order_items : [];
@@ -159,15 +168,7 @@ function fromDatabase(row: DatabaseOrder): StoredOrder {
       emoji: MENU_ITEMS.find((entry) => entry.sku === sku)?.emoji ?? '🍽️',
     };
   });
-  const rawPaymentStatus = String(payment?.status ?? 'unpaid');
-  const paymentStatus: PaymentStatus =
-    rawPaymentStatus === 'verified' || rawPaymentStatus === 'paid'
-      ? 'paid'
-      : rawPaymentStatus === 'rejected'
-        ? 'rejected'
-        : rawPaymentStatus === 'pending_verification'
-          ? 'pending_verification'
-          : 'unpaid';
+  const paymentStatus = paymentStatusFrom(payment?.status);
   return {
     databaseId: String(row.id ?? '') || undefined,
     orderNumber: String(row.order_number ?? ''),
@@ -195,6 +196,61 @@ function fromDatabase(row: DatabaseOrder): StoredOrder {
     updatedAt: String(row.updated_at ?? '') || undefined,
     accountEmail: null,
     ownerId: String(row.user_id ?? '') || null,
+    synced: true,
+  };
+}
+
+/** What `lookup_order_by_phone` (supabase/ci/007_guest_order_lookup.sql) hands back. */
+export type GuestOrderLookup = {
+  orderNumber: string;
+  status: string;
+  fulfilment: string;
+  subtotal: number;
+  discount: number;
+  deliveryFee: number;
+  total: number;
+  estimatedReadyAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  payment: { method: string; status: string; payableAmount: number; note: string };
+  items: { name: string; quantity: number; options?: string[]; addOns?: string[] }[];
+};
+
+/**
+ * The guest path: an order found by number and phone rather than by who is
+ * signed in. The lookup deliberately returns less than a full order row —
+ * no name, no address, no slip — so this fills the rest of StoredOrder's
+ * shape with placeholders rather than a guess; nothing that renders a
+ * guest-looked-up order reads those fields.
+ */
+export function fromGuestLookup(data: GuestOrderLookup): StoredOrder {
+  return {
+    orderNumber: data.orderNumber,
+    idempotencyKey: data.orderNumber,
+    name: '',
+    phone: '',
+    fulfilment: data.fulfilment === 'delivery' ? 'delivery' : 'pickup',
+    payment: data.payment?.method === 'promptpay' ? 'promptpay' : 'cash',
+    lines: (data.items ?? []).map((item, index) => ({
+      id: `${data.orderNumber}-${index}`,
+      sku: '',
+      name: item.name,
+      unitPrice: 0,
+      quantity: item.quantity,
+      options: item.options ?? [],
+      addOns: (item.addOns ?? []).map((name) => ({ name, price: 0 })),
+      emoji: '🍽️',
+    })),
+    totals: { subtotal: data.subtotal, discount: data.discount, deliveryFee: data.deliveryFee, total: data.total },
+    payableAmount: data.payment?.payableAmount ?? data.total,
+    slipReference: null,
+    paymentNote: data.payment?.note || null,
+    status: (data.status as OrderStatus) || 'pending',
+    paymentStatus: paymentStatusFrom(data.payment?.status),
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt ?? undefined,
+    accountEmail: null,
+    ownerId: null,
     synced: true,
   };
 }

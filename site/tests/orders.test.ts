@@ -7,11 +7,13 @@ import {
   cancelOrder,
   findOrder,
   flowFor,
+  fromGuestLookup,
   ordersForAccount,
   readOrders,
   setOrderStatus,
   setPaymentStatus,
   summarise,
+  type GuestOrderLookup,
   type StoredOrder,
 } from '../lib/orders';
 
@@ -93,6 +95,46 @@ describe('storing orders', () => {
     ];
     expect(ordersForAccount(orders, 'staff@imjai.test', 'customer-a').map((order) => order.orderNumber))
       .toEqual(['IJ260821-AA01']);
+  });
+});
+
+describe('a guest order lookup by phone', () => {
+  const lookup: GuestOrderLookup = {
+    orderNumber: 'IJ260824-A3F91C',
+    status: 'preparing',
+    fulfilment: 'delivery',
+    subtotal: 150,
+    discount: 0,
+    deliveryFee: 30,
+    total: 180,
+    estimatedReadyAt: null,
+    createdAt: '2026-08-24T10:00:00.000Z',
+    updatedAt: '2026-08-24T10:05:00.000Z',
+    payment: { method: 'promptpay', status: 'verified', payableAmount: 180.42, note: 'ยืนยันยอดกับธนาคารเรียบร้อย' },
+    items: [{ name: 'ลาเต้', quantity: 2, options: ['เย็น'], addOns: ['เพิ่มช็อต'] }],
+  };
+
+  it('carries over what the tracking card actually shows', () => {
+    const order = fromGuestLookup(lookup);
+    expect(order.orderNumber).toBe('IJ260824-A3F91C');
+    expect(order.status).toBe('preparing');
+    expect(order.fulfilment).toBe('delivery');
+    expect(order.totals).toEqual({ subtotal: 150, discount: 0, deliveryFee: 30, total: 180 });
+    expect(order.payableAmount).toBe(180.42);
+    expect(order.paymentNote).toBe('ยืนยันยอดกับธนาคารเรียบร้อย');
+    expect(order.lines).toEqual([{ id: 'IJ260824-A3F91C-0', sku: '', name: 'ลาเต้', unitPrice: 0, quantity: 2, options: ['เย็น'], addOns: [{ name: 'เพิ่มช็อต', price: 0 }], emoji: '🍽️' }]);
+  });
+
+  it('reads a verified payment as paid, same as the signed-in path does', () => {
+    expect(fromGuestLookup(lookup).paymentStatus).toBe('paid');
+    expect(fromGuestLookup({ ...lookup, payment: { ...lookup.payment, status: 'pending_verification' } }).paymentStatus).toBe('pending_verification');
+  });
+
+  it('never carries a name, phone or address the lookup did not return', () => {
+    const order = fromGuestLookup(lookup);
+    expect(order.name).toBe('');
+    expect(order.phone).toBe('');
+    expect(order.address).toBeUndefined();
   });
 });
 

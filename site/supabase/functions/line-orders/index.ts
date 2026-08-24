@@ -160,6 +160,22 @@ Deno.serve(async (request) => {
       return json({ linked: true, orders: ((orders ?? []) as DatabaseOrder[]).map(safeOrder) });
     }
 
+    if (action === 'lookupOrder') {
+      // The guest path: no line_accounts link required, for a customer who
+      // ordered on the website and asks about it in LINE (or the reverse)
+      // without ever having gone through "เชื่อมบัญชี". Order number and
+      // phone both have to match — see lookup_order_by_phone for why.
+      const orderNumber = String(body.orderNumber ?? '').trim();
+      const phone = String(body.phone ?? '').trim();
+      if (!orderNumber || !phone) return json({ error: 'invalid_lookup' }, 400);
+      const { data, error } = await admin.rpc('lookup_order_by_phone', {
+        p_order_number: orderNumber,
+        p_phone: phone,
+      });
+      if (error) throw error;
+      return json({ found: Boolean(data), order: data ?? null });
+    }
+
     if (action === 'health') return json({ ok: true });
     return json({ error: 'unknown_action' }, 400);
   } catch (error) {
