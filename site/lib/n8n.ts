@@ -40,56 +40,16 @@ type Envelope = {
   event: OrderEvent;
   sentAt: string;
   attempts: number;
-  order: {
-    orderNumber: string;
-    status: StoredOrder['status'];
-    paymentStatus: StoredOrder['paymentStatus'];
-    paymentMethod: StoredOrder['payment'];
-    paymentNote: string | null;
-    slipReference: string | null;
-    fulfilment: StoredOrder['fulfilment'];
-    address: string | null;
-    note: string | null;
-    customer: { name: string; phone: string; accountEmail: string | null };
-    totals: StoredOrder['totals'];
-    payableAmount: number;
-    items: { sku: string; name: string; quantity: number; unitPrice: number; options: string[]; addOns: string[]; note: string | null }[];
-    createdAt: string;
-    syncedToDatabase: boolean;
-  };
+  order: { orderNumber: string };
 };
 
-/** Only what the workflow needs, shaped so it does not have to know our types. */
+/**
+ * This public webhook is only a wake-up signal. Keep customer, address and
+ * payment data out of both the request and the browser retry queue; n8n reads
+ * the authoritative notification from Supabase with its private credential.
+ */
 function describe(order: StoredOrder): Envelope['order'] {
-  return {
-    orderNumber: order.orderNumber,
-    status: order.status,
-    paymentStatus: order.paymentStatus,
-    paymentMethod: order.payment,
-    paymentNote: order.paymentNote ?? null,
-    slipReference: order.slipReference ?? null,
-    fulfilment: order.fulfilment,
-    address: order.address ?? null,
-    note: order.note ?? null,
-    customer: {
-      name: order.name,
-      phone: order.phone,
-      accountEmail: order.accountEmail ?? null,
-    },
-    totals: order.totals,
-    payableAmount: order.payableAmount,
-    items: order.lines.map((line) => ({
-      sku: line.sku,
-      name: line.name,
-      quantity: line.quantity,
-      unitPrice: line.unitPrice,
-      options: line.options ?? [],
-      addOns: (line.addOns ?? []).map((addOn) => addOn.name),
-      note: line.note ?? null,
-    })),
-    createdAt: order.createdAt,
-    syncedToDatabase: order.synced ?? false,
-  };
+  return { orderNumber: order.orderNumber };
 }
 
 function readQueue(): Envelope[] {
@@ -114,13 +74,19 @@ async function deliver(envelope: Envelope): Promise<boolean> {
   try {
     const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // text/plain is a CORS-simple request. The workflow only uses this as a
+      // wake-up signal and reads the trusted order from Supabase, so avoiding
+      // a preflight keeps notifications working on static GitHub Pages.
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: JSON.stringify({ event: envelope.event, sentAt: envelope.sentAt, order: envelope.order }),
       // The reply is not read, and a redirect would not be a success either.
       redirect: 'error',
+      mode: 'no-cors',
       keepalive: true,
     });
-    return response.ok;
+    // A successful cross-origin no-cors request has an opaque response. A
+    // network failure still rejects, so it remains eligible for retry.
+    return response.ok || response.type === 'opaque';
   } catch {
     return false;
   }
