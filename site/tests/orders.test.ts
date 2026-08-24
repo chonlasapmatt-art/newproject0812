@@ -126,6 +126,19 @@ describe('the day summary', () => {
   it('reports no comparison rather than a fake zero percent', () => {
     expect(summarise([make()]).changeVsYesterday).toBeNull();
   });
+
+  it('separates paid, unpaid, pending and rejected payments for the dashboard', () => {
+    const stats = summarise([
+      make({ idempotencyKey: 'paid', paymentStatus: 'paid' }),
+      make({ idempotencyKey: 'unpaid', paymentStatus: 'unpaid' }),
+      make({ idempotencyKey: 'pending', paymentStatus: 'pending_verification' }),
+      make({ idempotencyKey: 'rejected', paymentStatus: 'rejected' }),
+    ]);
+    expect(stats.paidCount).toBe(1);
+    expect(stats.unpaidCount).toBe(1);
+    expect(stats.awaitingPayment).toBe(1);
+    expect(stats.rejectedPaymentCount).toBe(1);
+  });
 });
 
 describe('staff edits to the menu', () => {
