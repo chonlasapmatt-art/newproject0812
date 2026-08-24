@@ -157,7 +157,23 @@ Deno.serve(async (request) => {
       | null;
     const payment = Array.isArray(relatedPayments) ? relatedPayments[0] : relatedPayments;
     if (!payment) throw new Error('missing_payment_row');
+    const confirmPayment = async (
+      verifiedVia: 'provider' | 'staff' | 'automation',
+      verification: unknown,
+      note: string,
+    ) => {
+      const { error } = await client.rpc('complete_verified_payment', {
+        p_payment_id: payment.id,
+        p_verified_via: verifiedVia,
+        p_verification: verification,
+        p_note: note,
+      });
+      if (error) throw error;
+    };
     if (payment.status === 'verified' || payment.status === 'paid') {
+      // Heal older records where payment was verified before the order and
+      // dashboard status were linked atomically.
+      await confirmPayment('automation', null, 'ยืนยันยอดเรียบร้อย');
       return new Response(JSON.stringify({ status: 'confirmed', reason: 'ยืนยันไปแล้วก่อนหน้านี้' }), { status: 200, headers });
     }
     const attemptedAt = payment.verification_attempted_at ? new Date(String(payment.verification_attempted_at)).getTime() : 0;
@@ -240,13 +256,7 @@ Deno.serve(async (request) => {
         return new Response(JSON.stringify({ status: 'rejected', code: 'wrong_account', reason }), { status: 200, headers });
       }
 
-      await settle({
-        status: 'verified',
-        verified_via: 'provider',
-        verified_at: new Date().toISOString(),
-        verification: verdict.raw,
-        verification_reason: 'ยืนยันยอดกับธนาคารเรียบร้อย',
-      });
+      await confirmPayment('provider', verdict.raw, 'ยืนยันยอดกับธนาคารเรียบร้อย');
       return new Response(JSON.stringify({ status: 'confirmed', reason: 'ยืนยันยอดกับธนาคารเรียบร้อย' }), { status: 200, headers });
     }
 
