@@ -139,7 +139,7 @@ begin
     raise exception 'delivery address required';
   end if;
 
-  v_number := 'IJ' || to_char(now(),'YYMMDD') || '-' || upper(substr(encode(gen_random_bytes(4),'hex'),1,6));
+  v_number := 'IJ' || to_char(now(),'YYMMDD') || '-' || upper(substr(encode(extensions.gen_random_bytes(4),'hex'),1,6));
   insert into public.orders(
     order_number,user_id,idempotency_key,customer_name,customer_phone,fulfilment,
     delivery_address,customer_note,status,subtotal,total
