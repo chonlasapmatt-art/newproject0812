@@ -54,7 +54,7 @@ export function lineLabelFor(context: LineContext): string {
  */
 export function lineHintFor(context: LineContext): string {
   if (context.kind === 'order' || (context.kind === 'payment' && context.orderNumber)) {
-    return `แจ้งเลขออเดอร์ ${context.orderNumber} ให้ร้านด้วยนะคะ จะได้ตอบได้ทันที`;
+    return `ถ้าเชื่อมสมาชิกเว็บกับ LINE แล้ว ถามว่า “ออเดอร์ถึงไหนแล้ว” ได้เลย หรือแจ้งเลข ${context.orderNumber}`;
   }
   return 'ทักมาได้เลย ร้านตอบในเวลาทำการ 07:00–20:00 น.';
 }

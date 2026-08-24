@@ -22,6 +22,8 @@ import { isSupabaseConfigured, supabase } from './supabase';
 export type Role = 'guest' | 'customer' | 'staff' | 'admin';
 
 export type SessionUser = {
+  /** Supabase user id. Missing only in local preview mode. */
+  id?: string;
   email: string;
   name: string;
   /** True once Supabase has verified this session; false in preview mode. */
@@ -187,6 +189,7 @@ async function applyAccount(account: { id: string; email?: string; user_metadata
   }
 
   const user: SessionUser = {
+    id: account.id,
     email: account.email,
     name: (account.user_metadata?.full_name as string) || account.email.split('@')[0],
     verified: true,

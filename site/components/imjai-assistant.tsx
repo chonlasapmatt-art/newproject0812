@@ -80,11 +80,11 @@ export function ImJaiAssistant() {
       menu,
       // Scoped to the signed-in account, so the assistant physically cannot
       // read out an order that belongs to somebody else.
-      orders: ordersForAccount(orders, session.user?.email),
+      orders: ordersForAccount(orders, session.user?.email, session.user?.id),
       signedIn: session.status === 'signed-in',
       customerName: session.user?.name ?? null,
     }),
-    [menu, orders, session.status, session.user?.email, session.user?.name],
+    [menu, orders, session.status, session.user?.email, session.user?.id, session.user?.name],
   );
 
   const send = useCallback(

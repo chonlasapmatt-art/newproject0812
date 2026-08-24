@@ -38,6 +38,15 @@ const schema = z.object({
 
 type CheckoutValues = z.infer<typeof schema>;
 
+type ServerQuote = {
+  orderId: string;
+  orderNumber: string;
+  totals: StoredOrder['totals'];
+  payableAmount: number;
+  values: CheckoutValues;
+  lines: StoredOrder['lines'];
+};
+
 /**
  * Where checkout sits in the whole order journey — purely an orientation
  * marker, not a routed wizard. The four form cards below stay a single page
@@ -74,6 +83,8 @@ export function CheckoutPage() {
   const { lines, coupon, setCoupon, clear } = useCartStore();
   const [submitting, setSubmitting] = useState(false);
   const [slip, setSlip] = useState<File | null>(null);
+  const [uploadedSlipPath, setUploadedSlipPath] = useState<string | null>(null);
+  const [serverQuote, setServerQuote] = useState<ServerQuote | null>(null);
   // Result of reading the QR on the uploaded slip. The reference travels with
   // the order so the server can reject a slip already spent on another one.
   const [slipScan, setSlipScan] = useState<
@@ -81,6 +92,7 @@ export function CheckoutPage() {
   >(null);
 
   const onSlipChange = async (file: File | null) => {
+    setUploadedSlipPath(null);
     const accepted =
       file && file.size <= 5_000_000 && ['image/jpeg', 'image/png', 'image/webp'].includes(file.type);
     if (!accepted) {
@@ -106,17 +118,24 @@ export function CheckoutPage() {
   const promptPayId = process.env.NEXT_PUBLIC_PROMPTPAY_ID ?? '';
   const promptPayName = process.env.NEXT_PUBLIC_PROMPTPAY_NAME ?? STORE.name;
 
-  // Each order pays a distinct satang suffix, so an incoming transfer maps to
-  // exactly one order even when two customers buy identical baskets.
+  // Production QR figures come back from the server after it has priced and
+  // recorded the order. The local calculation remains only for preview builds
+  // with no database, so the demo flow still works without pretending it is a
+  // bank-authoritative total.
   const charge = useMemo(() => {
-    if (!orderRef || payment !== 'promptpay' || totals.total <= 0) return null;
-    const amounts = describeAmount(totals.total, orderRef.orderNumber);
+    if (payment !== 'promptpay') return null;
+    const amounts = serverQuote
+      ? { baseTotal: serverQuote.totals.total, payable: serverQuote.payableAmount, surcharge: serverQuote.payableAmount - serverQuote.totals.total, display: serverQuote.payableAmount.toFixed(2) }
+      : !isSupabaseConfigured && orderRef && totals.total > 0
+        ? describeAmount(totals.total, orderRef.orderNumber)
+        : null;
+    if (!amounts) return null;
     try {
       return { ...amounts, payload: buildPromptPayPayload(promptPayId, amounts.payable) };
     } catch {
       return null; // PromptPay id missing or malformed — fall back to the notice below
     }
-  }, [orderRef, payment, totals.total, promptPayId]);
+  }, [orderRef, payment, totals.total, promptPayId, serverQuote]);
 
   /**
    * Which card holds each field, so a rejected submit can point at it.
@@ -148,74 +167,149 @@ export function CheckoutPage() {
   const onSubmit = async (values: CheckoutValues) => {
     if (!lines.length) return;
     if (!canOrder) return;
-    if (values.payment === 'promptpay' && !slip) return;
     if (!orderRef) return;
+    const needsSlipNow = values.payment === 'promptpay' && (Boolean(serverQuote) || !isSupabaseConfigured);
+    if (needsSlipNow && !slip) return;
     setSubmitting(true);
-    const { idempotencyKey, orderNumber } = orderRef;
-    // payableAmount carries the satang suffix the QR was built with; slip
-    // verification matches the incoming transfer against exactly this figure.
-    // accountEmail is what lets the customer see this order under "ออเดอร์ของ
-    // ฉัน" and lets the assistant answer "ออเดอร์ฉันถึงไหนแล้ว" without asking
-    // them to type a reference they no longer have.
-    const draft: StoredOrder = { orderNumber, idempotencyKey, ...values, lines, totals, payableAmount: charge?.payable ?? totals.total, slipReference: slipScan?.state === 'read' ? slipScan.reference : null, paymentNote: null, status: 'pending', createdAt: new Date().toISOString(), paymentStatus: values.payment === 'promptpay' ? 'pending_verification' : 'unpaid', accountEmail: session.user?.email ?? null };
     try {
-      if (isSupabaseConfigured && supabase) {
-        // The server is asked first, because it is the only place that can
-        // price an order nobody can argue with. But it is not allowed to lose
-        // the sale: if the function is missing or unreachable, the order still
-        // stands on the number this browser generated, and reaches the kitchen
-        // through n8n. `synced` records which of the two happened, so the
-        // dashboard can say so rather than quietly showing less than the truth.
-        try {
-          const { data, error } = await supabase.functions.invoke('create-order', { body: { idempotencyKey, customer: { name: values.name, phone: values.phone }, fulfilment: values.fulfilment, address: values.address, note: values.note, paymentMethod: values.payment, coupon: values.coupon, items: lines.map((line) => ({ sku: line.sku, quantity: line.quantity, options: line.options, addOns: line.addOns?.map((item) => item.name), note: line.note })) } });
-          if (error) throw error;
-          if (data?.orderNumber) draft.orderNumber = data.orderNumber;
-          draft.synced = true;
-        } catch {
-          draft.synced = false;
-        }
-
-        // Ask the bank about the slip. A failure here must not lose the order:
-        // it is already placed, and an unverified payment simply waits for staff.
-        if (draft.synced && slipScan?.state === 'read') {
-          try {
-            const verified = await supabase.functions.invoke('verify-slip', {
-              body: { orderNumber: draft.orderNumber, slipReference: slipScan.reference },
-            });
-            const verdict = verified.data as { status?: string; reason?: string } | null;
-            if (verdict?.status === 'confirmed') draft.paymentStatus = 'paid';
-            else if (verdict?.status === 'rejected') draft.paymentStatus = 'rejected';
-            draft.paymentNote = verdict?.reason ?? null;
-          } catch {
-            draft.paymentNote = 'ยังตรวจสลิปกับธนาคารไม่ได้ พนักงานจะตรวจสอบให้';
+      let quote = serverQuote;
+      if (isSupabaseConfigured) {
+        if (!supabase || !session.user?.id) throw new Error('authentication_required');
+        if (!quote) {
+          const quotedLines = lines.map((line) => ({
+            ...line,
+            options: [...(line.options ?? [])],
+            addOns: (line.addOns ?? []).map((addOn) => ({ ...addOn })),
+          }));
+          const { data, error } = await supabase.functions.invoke('create-order', {
+            body: {
+              idempotencyKey: orderRef.idempotencyKey,
+              customer: { name: values.name, phone: values.phone },
+              fulfilment: values.fulfilment,
+              address: values.address,
+              note: values.note,
+              paymentMethod: values.payment,
+              coupon: values.coupon,
+              items: quotedLines.map((line) => ({
+                sku: line.sku,
+                quantity: line.quantity,
+                options: line.options,
+                addOns: line.addOns?.map((item) => item.name),
+                note: line.note,
+              })),
+            },
+          });
+          if (error || !data?.orderNumber) throw error ?? new Error('invalid_order_quote');
+          quote = {
+            orderId: String(data.orderId ?? ''),
+            orderNumber: String(data.orderNumber),
+            totals: {
+              subtotal: Number(data.subtotal),
+              discount: Number(data.discount),
+              deliveryFee: Number(data.deliveryFee),
+              total: Number(data.total),
+            },
+            payableAmount: Number(data.payableAmount),
+            values: { ...values },
+            lines: quotedLines,
+          };
+          if (values.payment === 'promptpay') {
+            setServerQuote(quote);
+            setSubmitting(false);
+            showToast(`ล็อกยอด ฿${quote.payableAmount.toFixed(2)} แล้ว กรุณาสแกน QR และแนบสลิป`, 'success', 5000);
+            return;
           }
-        } else if (!draft.synced && slipScan?.state === 'read') {
-          draft.paymentNote = 'ยังตรวจสลิปกับธนาคารไม่ได้ พนักงานจะตรวจสอบให้';
         }
+      } else {
+        quote = {
+          orderId: '',
+          orderNumber: orderRef.orderNumber,
+          totals,
+          payableAmount: charge?.payable ?? totals.total,
+          values: { ...values },
+          lines,
+        };
       }
+
+      if (!quote) throw new Error('missing_order_quote');
+      const draft: StoredOrder = {
+        databaseId: quote.orderId || undefined,
+        orderNumber: quote.orderNumber,
+        idempotencyKey: orderRef.idempotencyKey,
+        ...quote.values,
+        lines: quote.lines,
+        totals: quote.totals,
+        payableAmount: quote.payableAmount,
+        slipReference: slipScan?.state === 'read' ? slipScan.reference : null,
+        slipPath: null,
+        paymentNote: null,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        paymentStatus: quote.values.payment === 'promptpay' ? 'pending_verification' : 'unpaid',
+        accountEmail: session.user?.email ?? null,
+        ownerId: session.user?.id ?? null,
+        synced: isSupabaseConfigured,
+      };
+
+      if (isSupabaseConfigured && supabase && quote.values.payment === 'promptpay' && slip) {
+        const extension = slip.type === 'image/png' ? 'png' : slip.type === 'image/webp' ? 'webp' : 'jpg';
+        let slipPath = uploadedSlipPath;
+        if (!slipPath) {
+          slipPath = `${session.user!.id}/${quote.orderId}/${crypto.randomUUID()}.${extension}`;
+          const uploaded = await supabase.storage.from('payment-slips').upload(slipPath, slip, {
+            contentType: slip.type,
+            cacheControl: '3600',
+            upsert: false,
+          });
+          if (uploaded.error) throw uploaded.error;
+          setUploadedSlipPath(slipPath);
+        }
+        draft.slipPath = slipPath;
+        const verified = await supabase.functions.invoke('verify-slip', {
+          body: {
+            orderNumber: draft.orderNumber,
+            slipReference: slipScan?.state === 'read' ? slipScan.reference : '',
+            slipPath,
+          },
+        });
+        if (verified.error) throw verified.error;
+        const verdict = verified.data as { status?: string; reason?: string } | null;
+        if (verdict?.status === 'confirmed') draft.paymentStatus = 'paid';
+        else if (verdict?.status === 'rejected') draft.paymentStatus = 'rejected';
+        draft.paymentNote = verdict?.reason ?? 'พนักงานจะตรวจสอบสลิปให้';
+      }
+
       addOrder(draft);
       // The shop watches n8n, so this is how they learn someone is waiting.
       // It must not be able to hold up the redirect or fail the order.
       void notify('order.placed', draft);
-      setCoupon(values.coupon ?? ''); clear(); renewOrderRef();
+      setCoupon(quote.values.coupon ?? ''); clear(); renewOrderRef();
       router.push(`/track?order=${encodeURIComponent(draft.orderNumber)}&created=1`);
-    } catch {
+    } catch (error) {
+      console.error('checkout failed', error);
       setSubmitting(false);
-      showToast('ยังส่งออเดอร์ไม่ได้ กรุณาลองอีกครั้งหรือติดต่อร้านที่ 099-875-6879', 'error', 5000);
+      showToast('ยังดำเนินการไม่สำเร็จ ข้อมูลออเดอร์เดิมยังอยู่ กรุณาลองอีกครั้งหรือติดต่อร้านที่ 099-875-6879', 'error', 6000);
     }
   };
+
+  const shownTotals = serverQuote?.totals ?? totals;
+  const waitingForServerQr = isSupabaseConfigured && payment === 'promptpay' && !serverQuote;
+  const waitingForSlip = payment === 'promptpay' && !waitingForServerQr && !slip;
+  const submitLabel = waitingForServerQr
+    ? `สร้าง QR และล็อกยอด · ฿${totals.total}`
+    : `ยืนยันออเดอร์ · ฿${payment === 'promptpay' && serverQuote ? serverQuote.payableAmount.toFixed(2) : shownTotals.total}`;
 
   if (!lines.length) return <main className="checkout-empty"><span>🧺</span><h1>ตะกร้ายังว่างอยู่</h1><p>เลือกเมนูที่อยากทานก่อน แล้วค่อยกลับมายืนยันออเดอร์นะคะ</p><Link prefetch={false} className="primary-button" href="/menu">กลับไปเลือกเมนู</Link></main>;
   return <main className="checkout-page"><div className="checkout-heading"><Link prefetch={false} href="/menu"><ChevronLeft /> กลับไปเลือกเมนู</Link><p className="eyebrow">SECURE CHECKOUT</p><h1>ยืนยันความอร่อย</h1><p>ตรวจรายการและเลือกวิธีรับอาหารก่อนส่งออเดอร์</p></div>
     <CheckoutProgress />
     <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="checkout-layout">
       <div className="checkout-form-stack">
-        <section {...cardProps(1)}><div className="form-card-title"><span>1</span><div><h2>ข้อมูลผู้สั่ง</h2><p>ใช้สำหรับติดต่อเรื่องออเดอร์นี้เท่านั้น</p></div></div><div className="field-grid"><label>ชื่อผู้สั่ง<input {...register('name')} autoComplete="name" placeholder="ชื่อ–นามสกุล" />{errors.name && <small>{errors.name.message}</small>}</label><label>เบอร์โทร<input {...register('phone')} inputMode="tel" autoComplete="tel" placeholder="08X-XXX-XXXX" />{errors.phone && <small>{errors.phone.message}</small>}</label></div></section>
-        <section {...cardProps(2)}><div className="form-card-title"><span>2</span><div><h2>เลือกรับอาหาร</h2><p>รับที่ร้านได้เร็วที่สุด หรือให้เราไปส่ง</p></div></div><div className="choice-grid"><label className={fulfilment === 'pickup' ? 'selected' : ''}><input type="radio" value="pickup" {...register('fulfilment')} /><Store /><b>รับที่ร้าน</b><small>พร้อมรับประมาณ 20–30 นาที</small></label><label className={fulfilment === 'delivery' ? 'selected' : ''}><input type="radio" value="delivery" {...register('fulfilment')} /><Truck /><b>จัดส่ง</b><small>ประมาณ 30–45 นาที</small></label></div><AnimatePresence>{fulfilment === 'delivery' && <motion.label className="full-field" {...rise}><span><MapPin size={16} /> ที่อยู่จัดส่ง</span><textarea {...register('address')} rows={3} placeholder="บ้านเลขที่ อาคาร ชั้น ถนน แขวง เขต และจุดสังเกต" />{errors.address && <small>{errors.address.message}</small>}</motion.label>}</AnimatePresence></section>
-        <section {...cardProps(3)}><div className="form-card-title"><span>3</span><div><h2>วิธีชำระเงิน</h2><p>ร้านจะยืนยันการชำระเงินหลังตรวจสอบแล้ว</p></div></div><div className="payment-options"><label className={payment === 'cash' ? 'selected' : ''}><input type="radio" value="cash" {...register('payment')} /><span>💵</span><div><b>เงินสดตอนรับอาหาร</b><small>ชำระเมื่อรับที่ร้านหรือปลายทาง</small></div></label><label className={payment === 'promptpay' ? 'selected' : ''}><input type="radio" value="promptpay" {...register('payment')} /><QrCode /><div><b>พร้อมเพย์ QR</b><small>อัปโหลดสลิปเพื่อรอตรวจสอบ</small></div></label></div><AnimatePresence>{payment === 'promptpay' && <motion.div className="promptpay-panel" {...rise}>{charge ? <PromptPayCard payload={charge.payload} amountDisplay={charge.display} accountName={promptPayName} orderNumber={orderRef?.orderNumber} /> : <div className="qr-placeholder"><QrCode /><span>QR ร้านค้า</span><small>{promptPayId ? 'กำลังเตรียม…' : 'ยังไม่ได้ตั้งค่า PROMPTPAY_ID'}</small></div>}<div><b>สแกน QR แล้วอัปโหลดสลิปเพื่อยืนยันอัตโนมัติ</b><p>ยอดชำระ {charge ? `฿${charge.display}` : `฿${totals.total}`}</p><label className="slip-upload">อัปโหลดสลิป (JPG, PNG หรือ WebP ไม่เกิน 5MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void onSlipChange(event.target.files?.[0] ?? null); }} /></label>{slip && <small className="valid-file"><CheckCircle2 /> {slip.name}</small>}{slipScan?.state === 'scanning' && <small className="slip-status">กำลังอ่าน QR บนสลิป…</small>}{slipScan?.state === 'read' && <small className="slip-status ok">อ่าน QR บนสลิปได้แล้ว ระบบจะตรวจยอดกับธนาคารอัตโนมัติ</small>}{slipScan?.state === 'unreadable' && <small className="slip-status warn">อ่าน QR บนสลิปไม่ได้ พนักงานจะตรวจสอบให้ภายหลัง</small>}</div></motion.div>}</AnimatePresence></section>
-        <section {...cardProps(4)}><div className="form-card-title"><span>4</span><div><h2>หมายเหตุ</h2><p>รายละเอียดเพิ่มเติมสำหรับร้านหรือคนส่ง</p></div></div><label className="full-field"><textarea {...register('note')} rows={3} placeholder="เช่น โทรก่อนถึง ฝากไว้ที่ล็อบบี้" /></label></section>
+        <section {...cardProps(1)}><div className="form-card-title"><span>1</span><div><h2>ข้อมูลผู้สั่ง</h2><p>ใช้สำหรับติดต่อเรื่องออเดอร์นี้เท่านั้น</p></div></div><div className="field-grid"><label>ชื่อผู้สั่ง<input {...register('name')} readOnly={Boolean(serverQuote)} autoComplete="name" placeholder="ชื่อ–นามสกุล" />{errors.name && <small>{errors.name.message}</small>}</label><label>เบอร์โทร<input {...register('phone')} readOnly={Boolean(serverQuote)} inputMode="tel" autoComplete="tel" placeholder="08X-XXX-XXXX" />{errors.phone && <small>{errors.phone.message}</small>}</label></div></section>
+        <section {...cardProps(2)}><div className="form-card-title"><span>2</span><div><h2>เลือกรับอาหาร</h2><p>รับที่ร้านได้เร็วที่สุด หรือให้เราไปส่ง</p></div></div><div className="choice-grid"><label className={fulfilment === 'pickup' ? 'selected' : ''}><input type="radio" value="pickup" aria-disabled={Boolean(serverQuote)} onClick={(event) => { if (serverQuote) event.preventDefault(); }} onKeyDown={(event) => { if (serverQuote) event.preventDefault(); }} {...register('fulfilment')} /><Store /><b>รับที่ร้าน</b><small>พร้อมรับประมาณ 20–30 นาที</small></label><label className={fulfilment === 'delivery' ? 'selected' : ''}><input type="radio" value="delivery" aria-disabled={Boolean(serverQuote)} onClick={(event) => { if (serverQuote) event.preventDefault(); }} onKeyDown={(event) => { if (serverQuote) event.preventDefault(); }} {...register('fulfilment')} /><Truck /><b>จัดส่ง</b><small>ประมาณ 30–45 นาที</small></label></div><AnimatePresence>{fulfilment === 'delivery' && <motion.label className="full-field" {...rise}><span><MapPin size={16} /> ที่อยู่จัดส่ง</span><textarea {...register('address')} readOnly={Boolean(serverQuote)} rows={3} placeholder="บ้านเลขที่ อาคาร ชั้น ถนน แขวง เขต และจุดสังเกต" />{errors.address && <small>{errors.address.message}</small>}</motion.label>}</AnimatePresence></section>
+        <section {...cardProps(3)}><div className="form-card-title"><span>3</span><div><h2>วิธีชำระเงิน</h2><p>ร้านจะยืนยันการชำระเงินหลังตรวจสอบแล้ว</p></div></div><div className="payment-options"><label className={payment === 'cash' ? 'selected' : ''}><input type="radio" value="cash" aria-disabled={Boolean(serverQuote)} onClick={(event) => { if (serverQuote) event.preventDefault(); }} onKeyDown={(event) => { if (serverQuote) event.preventDefault(); }} {...register('payment')} /><span>💵</span><div><b>เงินสดตอนรับอาหาร</b><small>ชำระเมื่อรับที่ร้านหรือปลายทาง</small></div></label><label className={payment === 'promptpay' ? 'selected' : ''}><input type="radio" value="promptpay" aria-disabled={Boolean(serverQuote)} onClick={(event) => { if (serverQuote) event.preventDefault(); }} onKeyDown={(event) => { if (serverQuote) event.preventDefault(); }} {...register('payment')} /><QrCode /><div><b>พร้อมเพย์ QR</b><small>อัปโหลดสลิปเพื่อรอตรวจสอบ</small></div></label></div><AnimatePresence>{payment === 'promptpay' && <motion.div className="promptpay-panel" {...rise}>{charge ? <PromptPayCard payload={charge.payload} amountDisplay={charge.display} accountName={promptPayName} orderNumber={serverQuote?.orderNumber ?? orderRef?.orderNumber} /> : <div className="qr-placeholder"><QrCode /><span>QR ร้านค้า</span><small>{promptPayId ? 'กรอกข้อมูลแล้วกด “สร้าง QR และล็อกยอด”' : 'ยังไม่ได้ตั้งค่า PROMPTPAY_ID'}</small></div>}<div><b>{charge ? 'สแกน QR แล้วอัปโหลดสลิปเพื่อยืนยันอัตโนมัติ' : 'ระบบจะตรวจราคาและสร้าง QR จากยอดของ Server'}</b><p>ยอดชำระ {charge ? `฿${charge.display}` : `รอยืนยันจาก Server`}</p><label className="slip-upload">อัปโหลดสลิป (JPG, PNG หรือ WebP ไม่เกิน 5MB)<input type="file" disabled={!charge} accept="image/jpeg,image/png,image/webp" onChange={(event) => { void onSlipChange(event.target.files?.[0] ?? null); }} /></label>{slip && <small className="valid-file"><CheckCircle2 /> {slip.name}</small>}{slipScan?.state === 'scanning' && <small className="slip-status">กำลังอ่าน QR บนสลิป…</small>}{slipScan?.state === 'read' && <small className="slip-status ok">อ่าน QR บนสลิปได้แล้ว ระบบจะตรวจยอดกับธนาคารอัตโนมัติ</small>}{slipScan?.state === 'unreadable' && <small className="slip-status warn">อ่าน QR บนสลิปไม่ได้ แต่ระบบจะเก็บรูปไว้ให้พนักงานตรวจ</small>}</div></motion.div>}</AnimatePresence></section>
+        <section {...cardProps(4)}><div className="form-card-title"><span>4</span><div><h2>หมายเหตุ</h2><p>รายละเอียดเพิ่มเติมสำหรับร้านหรือคนส่ง</p></div></div><label className="full-field"><textarea {...register('note')} readOnly={Boolean(serverQuote)} rows={3} placeholder="เช่น โทรก่อนถึง ฝากไว้ที่ล็อบบี้" /></label></section>
       </div>
-      <aside className="order-summary"><h2>สรุปออเดอร์</h2><div className="summary-lines">{lines.map((line) => <div key={line.id}><span className="summary-emoji">{line.emoji}</span><div><b>{line.name}</b><small>{line.quantity} × ฿{line.unitPrice}{line.options?.length ? ` · ${line.options.join(', ')}` : ''}</small></div><strong>฿{lineTotal(line)}</strong></div>)}</div><label className="summary-coupon">คูปอง<input {...register('coupon')} placeholder="IMJAI15" /></label><dl><div><dt>ยอดสินค้า</dt><dd>฿{totals.subtotal}</dd></div><div><dt>ส่วนลด</dt><dd>-฿{totals.discount}</dd></div><div><dt>ค่าจัดส่ง</dt><dd>{totals.deliveryFee ? `฿${totals.deliveryFee}` : 'ฟรี'}</dd></div><div className="summary-total"><dt>ยอดรวมสุทธิ</dt><dd>฿{totals.total}</dd></div></dl>{payment === 'promptpay' && !slip && <p className="order-warning">กรุณาอัปโหลดสลิปก่อนส่งออเดอร์</p>}{!canOrder && <Link prefetch={false} className="signin-gate" href="/account"><b>เข้าสู่ระบบก่อนสั่งซื้อ</b><small>ใช้เวลาไม่ถึงนาที แล้วคุณจะติดตามออเดอร์และดูประวัติย้อนหลังได้</small></Link>}<button className="place-order" disabled={!canOrder || submitting || (payment === 'promptpay' && !slip)}>{submitting ? 'กำลังส่งออเดอร์…' : canOrder ? `ยืนยันออเดอร์ · ฿${totals.total}` : 'เข้าสู่ระบบเพื่อสั่งซื้อ'}</button><p className="secure-note"><ShieldCheck /> ราคาและสิทธิ์ส่วนลดจะตรวจซ้ำที่ระบบร้าน การชำระเงินจะแสดง “รอตรวจสอบ” จนกว่าพนักงานยืนยัน</p><LineButton context={{ kind: 'payment', orderNumber: orderRef?.orderNumber }} /></aside>
+      <aside className="order-summary"><h2>สรุปออเดอร์</h2><div className="summary-lines">{lines.map((line) => <div key={line.id}><span className="summary-emoji">{line.emoji}</span><div><b>{line.name}</b><small>{line.quantity} × ฿{line.unitPrice}{line.options?.length ? ` · ${line.options.join(', ')}` : ''}</small></div><strong>฿{lineTotal(line)}</strong></div>)}</div><label className="summary-coupon">คูปอง<input {...register('coupon')} readOnly={Boolean(serverQuote)} placeholder="IMJAI15" /></label><dl><div><dt>ยอดสินค้า</dt><dd>฿{shownTotals.subtotal}</dd></div><div><dt>ส่วนลด</dt><dd>-฿{shownTotals.discount}</dd></div><div><dt>ค่าจัดส่ง</dt><dd>{shownTotals.deliveryFee ? `฿${shownTotals.deliveryFee}` : 'ฟรี'}</dd></div><div className="summary-total"><dt>ยอดรวมสุทธิ</dt><dd>฿{shownTotals.total}</dd></div></dl>{waitingForSlip && <p className="order-warning">กรุณาอัปโหลดสลิปก่อนยืนยันออเดอร์</p>}{serverQuote && <p className="secure-note"><ShieldCheck /> ล็อกยอดจาก Server แล้ว · {serverQuote.orderNumber}</p>}{!canOrder && <Link prefetch={false} className="signin-gate" href="/account"><b>เข้าสู่ระบบก่อนสั่งซื้อ</b><small>ใช้เวลาไม่ถึงนาที แล้วคุณจะติดตามออเดอร์และดูประวัติย้อนหลังได้</small></Link>}<button className="place-order" disabled={!canOrder || submitting || waitingForSlip}>{submitting ? 'กำลังดำเนินการ…' : canOrder ? submitLabel : 'เข้าสู่ระบบเพื่อสั่งซื้อ'}</button><p className="secure-note"><ShieldCheck /> ราคาและสิทธิ์ส่วนลดตรวจจากระบบร้าน การชำระเงินจะแสดง “รอตรวจสอบ” จนกว่าจะยืนยัน</p><LineButton context={{ kind: 'payment', orderNumber: serverQuote?.orderNumber ?? orderRef?.orderNumber }} /></aside>
     </form>
   </main>;
 }

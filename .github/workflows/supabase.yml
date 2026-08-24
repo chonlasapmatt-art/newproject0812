@@ -194,6 +194,7 @@ jobs:
           [ -n "${SLIPOK_BRANCH_ID:-}" ] && printf 'SLIPOK_BRANCH_ID=%s\n' "$SLIPOK_BRANCH_ID" >> fn.env || true
           [ -n "${PROMPTPAY_ID:-}" ]     && printf 'PROMPTPAY_ID=%s\n'     "$PROMPTPAY_ID"     >> fn.env || true
           [ -n "${OPENAI_API_KEY:-}" ]   && printf 'OPENAI_API_KEY=%s\n'   "$OPENAI_API_KEY"   >> fn.env || true
+          [ -n "${N8N_SHARED_SECRET:-}" ] && printf 'N8N_SHARED_SECRET=%s\n' "$N8N_SHARED_SECRET" >> fn.env || true
           if [ -s fn.env ]; then
             supabase secrets set --project-ref "$PROJECT_REF" --env-file fn.env
             echo "pushed $(wc -l < fn.env) function secret(s)"
@@ -203,8 +204,13 @@ jobs:
         env:
           SLIPOK_API_KEY: ${{ secrets.SLIPOK_API_KEY }}
           SLIPOK_BRANCH_ID: ${{ secrets.SLIPOK_BRANCH_ID }}
-          PROMPTPAY_ID: ${{ secrets.PROMPTPAY_ID }}
+          # A PromptPay receiving id is public (it is inside the QR). Keep the
+          # verifier pinned to the same real account even when no secret was
+          # created, otherwise a provider answer with a different receiver
+          # could only be sent to manual review.
+          PROMPTPAY_ID: ${{ secrets.PROMPTPAY_ID || vars.PROMPTPAY_ID || '0998756879' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          N8N_SHARED_SECRET: ${{ secrets.N8N_SHARED_SECRET }}
 
       - name: Deploy the Edge Functions
         working-directory: site
@@ -212,7 +218,7 @@ jobs:
         # so none of them can quietly fall behind the repository.
         run: |
           set -euo pipefail
-          for fn in create-order verify-slip ai-assistant; do
+          for fn in create-order verify-slip ai-assistant line-orders; do
             echo "── deploying $fn"
             supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
           done
@@ -224,7 +230,7 @@ jobs:
             echo ""
             echo "Project: \`$PROJECT_REF\`"
             echo ""
-            echo "SQL applied from \`site/supabase/ci\`, functions deployed: create-order, verify-slip, ai-assistant."
+            echo "SQL applied from \`site/supabase/ci\`, functions deployed: create-order, verify-slip, ai-assistant, line-orders."
             echo ""
-            echo "Function secrets not held here (SLIPOK_API_KEY, PROMPTPAY_ID, OPENAI_API_KEY) stay as set in the Supabase dashboard."
+            echo "Function secrets not held here (SLIPOK_API_KEY, PROMPTPAY_ID, OPENAI_API_KEY, N8N_SHARED_SECRET) stay as set in the Supabase dashboard."
           } >> "$GITHUB_STEP_SUMMARY"

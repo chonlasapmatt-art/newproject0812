@@ -85,6 +85,15 @@ describe('storing orders', () => {
     expect(ordersForAccount(orders, 'MIN@example.com').map((order) => order.orderNumber)).toEqual(['IJ260821-AA01']);
     expect(ordersForAccount(orders, null)).toHaveLength(0);
   });
+
+  it('uses the database owner id when staff can see more than one account', () => {
+    const orders = [
+      make({ ownerId: 'customer-a', synced: true }),
+      make({ idempotencyKey: 'k2', orderNumber: 'IJ2-B', ownerId: 'customer-b', synced: true }),
+    ];
+    expect(ordersForAccount(orders, 'staff@imjai.test', 'customer-a').map((order) => order.orderNumber))
+      .toEqual(['IJ260821-AA01']);
+  });
 });
 
 describe('the tracking timeline', () => {

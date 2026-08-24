@@ -1,11 +1,14 @@
 # Dependencies
 node_modules/
+.npm-cache/
+.pnpm-store/
 .pnp
 .pnp.js
 
 # Build output
 dist/
 .next/
+.next-conflict-*/
 out/
 build/
 
@@ -41,3 +44,7 @@ yarn-error.log*
 .wrangler/
 dist-standalone/
 IMJAI_WEBSITE_CODE.txt
+
+# Local n8n exports contain live webhook URLs and credential references.
+# Keep the repeatable builder script, never the generated workflow backup.
+artifacts/*.json

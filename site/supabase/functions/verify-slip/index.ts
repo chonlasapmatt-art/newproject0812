@@ -17,7 +17,10 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
  * payments.slip_reference settles races between the two systems.
  */
 
-const allowedOrigins = (Deno.env.get('CORS_ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
+const allowedOrigins = (Deno.env.get('CORS_ALLOWED_ORIGINS') ?? '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
 
 const cors = (origin: string | null) => ({
   'Access-Control-Allow-Origin': origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0] ?? '',
@@ -107,10 +110,26 @@ Deno.serve(async (request) => {
   }
 
   try {
+    const authorization = request.headers.get('Authorization') ?? '';
+    if (!authorization.startsWith('Bearer ')) {
+      return new Response('{"error":"authentication_required"}', { status: 401, headers });
+    }
+    const authClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authorization } }, auth: { persistSession: false } },
+    );
+    const { data: account, error: authError } = await authClient.auth.getUser(authorization.slice(7));
+    if (authError || !account.user) {
+      return new Response('{"error":"authentication_required"}', { status: 401, headers });
+    }
+
     const body = await request.json();
     const orderNumber = String(body?.orderNumber ?? '').slice(0, 40);
     const slipReference = String(body?.slipReference ?? '').trim().toUpperCase().slice(0, 512);
-    if (!orderNumber || slipReference.length < 8) throw new Error('invalid_payload');
+    const slipPath = String(body?.slipPath ?? '').trim().slice(0, 512);
+    if (!orderNumber || (!slipPath && slipReference.length < 8)) throw new Error('invalid_payload');
+    if (slipPath && !slipPath.startsWith(`${account.user.id}/`)) throw new Error('invalid_slip_path');
 
     const client = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
       auth: { persistSession: false },
@@ -120,26 +139,59 @@ Deno.serve(async (request) => {
     // otherwise a caller could name the amount its own slip happens to carry.
     const { data: order, error: orderError } = await client
       .from('orders')
-      .select('id, order_number, total, payments(id, status, amount, payable_amount, slip_reference)')
+      .select('id, user_id, order_number, total, payments(id, status, amount, payable_amount, slip_reference, verification_attempted_at)')
       .eq('order_number', orderNumber)
       .maybeSingle();
     if (orderError) throw orderError;
     if (!order) return new Response('{"status":"rejected","code":"not_found"}', { status: 404, headers });
+    if (order.user_id !== account.user.id) {
+      return new Response('{"error":"order_not_owned"}', { status: 403, headers });
+    }
 
     const payment = (order.payments as Record<string, unknown>[] | null)?.[0];
     if (!payment) throw new Error('missing_payment_row');
-    if (payment.status === 'paid') {
+    if (payment.status === 'verified' || payment.status === 'paid') {
       return new Response(JSON.stringify({ status: 'confirmed', reason: 'ยืนยันไปแล้วก่อนหน้านี้' }), { status: 200, headers });
+    }
+    const attemptedAt = payment.verification_attempted_at ? new Date(String(payment.verification_attempted_at)).getTime() : 0;
+    const claimCutoff = new Date(Date.now() - 15_000).toISOString();
+    if (attemptedAt && Date.now() - attemptedAt < 15_000) {
+      return new Response('{"error":"verification_rate_limited"}', { status: 429, headers });
+    }
+
+    // The original image is still valuable when the browser cannot decode its
+    // QR. Keep it in the private bucket and put the payment in the staff queue
+    // instead of rejecting a genuine transfer for a camera/print-quality issue.
+    if (slipReference.length < 8) {
+      const reason = 'อ่าน QR บนสลิปไม่ได้ พนักงานจะตรวจสอบจากรูปต้นฉบับ';
+      const { data: claimed, error } = await client
+        .from('payments')
+        .update({
+          slip_path: slipPath,
+          status: 'pending_verification',
+          verification_attempted_at: new Date().toISOString(),
+          verification_reason: reason,
+        })
+        .eq('id', payment.id)
+        .or(`verification_attempted_at.is.null,verification_attempted_at.lt.${claimCutoff}`)
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      if (!claimed) return new Response('{"error":"verification_rate_limited"}', { status: 429, headers });
+      return new Response(JSON.stringify({ status: 'review', code: 'no_qr', reason }), { status: 202, headers });
     }
 
     const expected = Number(payment.payable_amount ?? payment.amount ?? order.total);
 
     // Claim the reference before calling out. The unique index rejects a slip
     // already spent on another order, including one n8n recorded a moment ago.
-    const { error: claimError } = await client
+    const { data: claimed, error: claimError } = await client
       .from('payments')
-      .update({ slip_reference: slipReference })
-      .eq('id', payment.id);
+      .update({ slip_reference: slipReference, slip_path: slipPath || null, verification_attempted_at: new Date().toISOString() })
+      .eq('id', payment.id)
+      .or(`verification_attempted_at.is.null,verification_attempted_at.lt.${claimCutoff}`)
+      .select('id')
+      .maybeSingle();
     if (claimError) {
       const duplicate = claimError.code === '23505';
       return new Response(
@@ -151,6 +203,7 @@ Deno.serve(async (request) => {
         { status: duplicate ? 409 : 202, headers },
       );
     }
+    if (!claimed) return new Response('{"error":"verification_rate_limited"}', { status: 429, headers });
 
     const verdict = await askProvider(slipReference);
 
@@ -169,14 +222,19 @@ Deno.serve(async (request) => {
       }
 
       const storeProxy = Deno.env.get('PROMPTPAY_ID');
-      if (storeProxy && verdict.receiver && tail(verdict.receiver) !== tail(storeProxy)) {
+      if (!storeProxy || !verdict.receiver) {
+        const reason = 'ผู้ให้บริการไม่ส่งข้อมูลบัญชีปลายทางครบถ้วน พนักงานจะตรวจสอบ';
+        await settle({ status: 'pending_verification', verified_via: 'automation', verification: verdict.raw, verification_reason: reason });
+        return new Response(JSON.stringify({ status: 'review', code: 'receiver_unavailable', reason }), { status: 202, headers });
+      }
+      if (tail(verdict.receiver) !== tail(storeProxy)) {
         const reason = 'บัญชีปลายทางไม่ใช่บัญชีของร้าน';
         await settle({ status: 'rejected', verified_via: 'provider', verification: verdict.raw, verification_reason: reason });
         return new Response(JSON.stringify({ status: 'rejected', code: 'wrong_account', reason }), { status: 200, headers });
       }
 
       await settle({
-        status: 'paid',
+        status: 'verified',
         verified_via: 'provider',
         verified_at: new Date().toISOString(),
         verification: verdict.raw,

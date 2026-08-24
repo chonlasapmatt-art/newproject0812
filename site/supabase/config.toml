@@ -9,10 +9,13 @@
 project_id = "vshufucommkfgmdtaodq"
 
 [functions.create-order]
-verify_jwt = false
+verify_jwt = true
 
 [functions.verify-slip]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-assistant]
+verify_jwt = true
+
+[functions.line-orders]
 verify_jwt = false

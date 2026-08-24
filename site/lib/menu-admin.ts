@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { MENU_ITEMS, type MenuItem } from './catalog';
+import { isSupabaseConfigured, supabase } from './supabase';
 
 /**
  * The shop's own corrections to the menu.
@@ -32,7 +33,12 @@ export type MenuOverrides = Record<string, MenuOverride>;
 let cache: MenuOverrides = {};
 let items: MenuItem[] = MENU_ITEMS;
 let loaded = false;
+let databaseStarted = false;
 const listeners = new Set<() => void>();
+
+function announce() {
+  for (const listener of listeners) listener();
+}
 
 /** Reject anything that would put a nonsense figure in front of a customer. */
 function clean(raw: unknown): MenuOverride | null {
@@ -91,12 +97,58 @@ function readStored(): MenuOverrides {
 function commit(overrides: MenuOverrides) {
   cache = overrides;
   items = applyOverrides(MENU_ITEMS, overrides);
-  try {
-    localStorage.setItem(KEY, JSON.stringify(overrides));
-  } catch {
-    // Nothing to do; the edit still applies to this tab.
+  if (!isSupabaseConfigured) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(overrides));
+    } catch {
+      // Nothing to do; the edit still applies to this tab.
+    }
   }
-  for (const listener of listeners) listener();
+  announce();
+}
+
+async function loadDatabaseMenu() {
+  if (!isSupabaseConfigured || !supabase) return;
+  const { data, error } = await supabase
+    .from('menu_items')
+    .select('sku,name_th,description_th,ingredients,price,stock,is_available,is_featured,is_chef_choice,image_path');
+  if (error) throw error;
+  const bySku = new Map((data ?? []).map((row) => [String(row.sku), row]));
+  const next: MenuOverrides = {};
+  items = MENU_ITEMS.map((base) => {
+    const row = bySku.get(base.sku);
+    if (!row) return base;
+    const live: MenuItem = {
+      ...base,
+      name: String(row.name_th ?? base.name),
+      description: String(row.description_th ?? base.description),
+      ingredients: String(row.ingredients ?? base.ingredients),
+      price: Number(row.price ?? base.price),
+      stock: Number(row.stock ?? base.stock),
+      available: Boolean(row.is_available) && Number(row.stock ?? 0) > 0,
+      featured: Boolean(row.is_featured),
+      chefChoice: Boolean(row.is_chef_choice),
+      image: row.image_path ? String(row.image_path) : base.image,
+    };
+    const override: MenuOverride = {};
+    if (live.price !== base.price) override.price = live.price;
+    if (live.stock !== base.stock) override.stock = live.stock;
+    if (live.available !== base.available) override.available = live.available;
+    if (Object.keys(override).length) next[base.sku] = override;
+    return live;
+  });
+  cache = next;
+  announce();
+}
+
+function startDatabase() {
+  if (databaseStarted || !isSupabaseConfigured || !supabase) return;
+  databaseStarted = true;
+  void loadDatabaseMenu().catch(() => undefined);
+  supabase
+    .channel('imjai-menu-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => void loadDatabaseMenu().catch(() => undefined))
+    .subscribe();
 }
 
 function subscribe(onChange: () => void) {
@@ -104,14 +156,20 @@ function subscribe(onChange: () => void) {
 
   if (!loaded) {
     loaded = true;
-    cache = readStored();
-    items = applyOverrides(MENU_ITEMS, cache);
-    window.addEventListener('storage', (event) => {
-      if (event.key && event.key !== KEY) return;
+    if (isSupabaseConfigured) {
+      cache = {};
+      items = MENU_ITEMS;
+      startDatabase();
+    } else {
       cache = readStored();
       items = applyOverrides(MENU_ITEMS, cache);
-      for (const listener of listeners) listener();
-    });
+      window.addEventListener('storage', (event) => {
+        if (event.key && event.key !== KEY) return;
+        cache = readStored();
+        items = applyOverrides(MENU_ITEMS, cache);
+        announce();
+      });
+    }
   }
 
   return () => {
@@ -137,7 +195,7 @@ export function useMenuItem(sku: string | null | undefined): MenuItem | null {
   return sku ? menu.find((item) => item.sku === sku) ?? null : null;
 }
 
-export function updateMenuItem(sku: string, change: MenuOverride) {
+export async function updateMenuItem(sku: string, change: MenuOverride) {
   const base = MENU_ITEMS.find((item) => item.sku === sku);
   if (!base) return;
   const merged = clean({ ...cache[sku], ...change });
@@ -145,13 +203,29 @@ export function updateMenuItem(sku: string, change: MenuOverride) {
   if (merged) next[sku] = merged;
   else delete next[sku];
   commit(next);
+  if (isSupabaseConfigured && supabase) {
+    const patch: Record<string, unknown> = {};
+    if (change.price !== undefined) patch.price = merged?.price ?? base.price;
+    if (change.stock !== undefined) patch.stock = merged?.stock ?? base.stock;
+    if (change.available !== undefined) patch.is_available = (merged?.available ?? base.available) && (merged?.stock ?? base.stock) > 0;
+    const { error } = await supabase.from('menu_items').update(patch).eq('sku', sku).select('sku').single();
+    if (error) { await loadDatabaseMenu(); throw error; }
+    await loadDatabaseMenu();
+  }
 }
 
 /** Put one dish back to what the build shipped. */
-export function resetMenuItem(sku: string) {
+export async function resetMenuItem(sku: string) {
+  const base = MENU_ITEMS.find((item) => item.sku === sku);
+  if (!base) return;
   const next = { ...cache };
   delete next[sku];
   commit(next);
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('menu_items').update({ price: base.price, stock: base.stock, is_available: base.available }).eq('sku', sku).select('sku').single();
+    if (error) { await loadDatabaseMenu(); throw error; }
+    await loadDatabaseMenu();
+  }
 }
 
 export function resetAllMenuItems() {

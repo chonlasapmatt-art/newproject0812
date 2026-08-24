@@ -2,17 +2,21 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AnimatePresence, motion } from 'motion/react';
-import { Eye, EyeOff, LogOut, MapPin, Package, RotateCcw, ShieldCheck, UserRound } from 'lucide-react';
+import { Eye, EyeOff, Link2, LogOut, MapPin, Package, RotateCcw, ShieldCheck, Unlink, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { claimPendingAdd } from '../lib/add-to-cart';
 import { rise, settle } from '../lib/motion';
 import { previewSignIn, useSession, useSignOut, type SessionUser } from '../lib/session';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { getLineAccountState, unlinkLineAccount, type LineAccountState } from '../lib/line-account';
 import { showToast } from '../lib/toast';
+import { ordersForAccount, useOrders, type StoredOrder } from '../lib/orders';
 import { useCartStore } from '../stores/cart-store';
+import { LineButton } from './line-button';
 
 const authSchema = z.object({ email: z.string().email('กรุณากรอกอีเมลให้ถูกต้อง'), password: z.string().min(8, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'), name: z.string().optional() });
 type AuthValues = z.infer<typeof authSchema>;
@@ -45,6 +49,8 @@ export function AccountPage() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const cartLines = useCartStore((state) => state.lines);
+  const orders = useOrders();
+  const myOrders = ordersForAccount(orders, user?.email, user?.id).slice(0, 6);
   const { register, handleSubmit, formState: { errors } } = useForm<AuthValues>({ resolver: zodResolver(authSchema) });
 
 
@@ -82,12 +88,54 @@ export function AccountPage() {
   const logout = async () => { await signOut(); setMessage('ออกจากระบบเรียบร้อย'); window.setTimeout(() => router.push('/'), 450); };
 
   return <AnimatePresence mode="wait">{user ? (
-    <MemberDashboard key="member" user={user} logout={logout} />
+    <MemberDashboard key="member" user={user} orders={myOrders} logout={logout} />
   ) : (
     <motion.main className="account-page" key="guest" {...settle} exit={{ opacity: 0, y: 12, scale: 0.99, transition: { duration: 0.18 } }}><section className="account-art"><div><span className="account-emblem">อ</span><p className="eyebrow">IMJAI MEMBER</p><h1>ยิ่งแวะมา<br />ยิ่งรู้ใจ</h1><p>เก็บที่อยู่ ดูประวัติ ติดตามออเดอร์ และสั่งเมนูเดิมซ้ำได้ง่ายกว่าเดิม</p></div><div className="account-benefits"><span><Package /> ดูออเดอร์ทั้งหมดในที่เดียว</span><span><MapPin /> บันทึกที่อยู่ได้หลายรายการ</span><span><RotateCcw /> สั่งเมนูโปรดซ้ำในคลิกเดียว</span></div></section><section className="auth-card"><p className="eyebrow">WELCOME TO IMJAI</p><h2>{mode === 'login' ? 'เข้าสู่ระบบ' : mode === 'register' ? 'สมัครสมาชิก' : 'ลืมรหัสผ่าน'}</h2><p>{mode === 'login' ? 'กลับมาสั่งเมนูโปรดกันค่ะ' : mode === 'register' ? 'สมัครฟรี ใช้เวลาไม่ถึงหนึ่งนาที' : 'เราจะส่งลิงก์ตั้งรหัสผ่านใหม่ให้'}</p><div className="auth-tabs"><button className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>เข้าสู่ระบบ</button><button className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>สมัครสมาชิก</button></div><form onSubmit={handleSubmit(submit)}>{mode === 'register' && <label>ชื่อที่ใช้เรียก<input {...register('name')} autoComplete="name" placeholder="ชื่อของคุณ" /></label>}<label>อีเมล<input {...register('email')} type="email" autoComplete="email" placeholder="you@example.com" />{errors.email && <small>{errors.email.message}</small>}</label>{mode !== 'forgot' && <label>รหัสผ่าน<div className="password-field"><input {...register('password')} type={showPassword ? 'text' : 'password'} autoComplete={mode === 'register' ? 'new-password' : 'current-password'} placeholder="อย่างน้อย 8 ตัวอักษร" /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}>{showPassword ? <EyeOff /> : <Eye />}</button></div>{errors.password && <small>{errors.password.message}</small>}</label>}{mode === 'login' && <button className="forgot-link" type="button" onClick={() => setMode('forgot')}>ลืมรหัสผ่าน?</button>}<button className="auth-submit" disabled={busy}>{busy ? 'กำลังดำเนินการ…' : mode === 'login' ? 'เข้าสู่ระบบ' : mode === 'register' ? 'สร้างบัญชี' : 'ส่งลิงก์รีเซ็ต'}</button><AnimatePresence>{message && <motion.p className="form-message" role="status" key={message} {...rise}>{message}</motion.p>}</AnimatePresence></form><div className="auth-security"><ShieldCheck /> ข้อมูลสมาชิกถูกป้องกันด้วย Supabase Auth และ Row Level Security</div></section></motion.main>
   )}</AnimatePresence>;
 }
 
-function MemberDashboard({ user, logout }: { user: SessionUser; logout: () => void }) {
-  return <motion.main className="member-page" key="member" {...settle} exit={{ opacity: 0, y: 12, scale: 0.99, transition: { duration: 0.18 } }}><section className="member-head"><div className="member-avatar"><UserRound /></div><div><p>สวัสดีค่ะ</p><h1>{user.name || user.email}</h1><span>{user.verified ? 'สมาชิกอิ่มใจ' : 'สมาชิกอิ่มใจ · โหมดพรีวิว'}</span></div><button onClick={logout}><LogOut /> ออกจากระบบ</button></section><section className="member-grid"><article><h2>ข้อมูลส่วนตัว</h2><label>ชื่อ<input defaultValue={user.name} /></label><label>เบอร์โทร<input defaultValue="" /></label><button className="secondary-button">บันทึกข้อมูล</button></article><article><h2>ที่อยู่จัดส่ง</h2><div className="saved-address"><MapPin /><div><b>ยังไม่มีที่อยู่</b><span>เพิ่มที่อยู่เพื่อชำระเงินได้เร็วขึ้น</span></div></div><button className="secondary-button">+ เพิ่มที่อยู่</button></article><article className="member-orders"><h2>ออเดอร์ล่าสุด</h2><div className="empty-member-data"><Package /><span>ยังไม่มีประวัติออเดอร์</span></div></article></section></motion.main>;
+function MemberDashboard({ user, orders, logout }: { user: SessionUser; orders: StoredOrder[]; logout: () => void }) {
+  return <motion.main className="member-page" key="member" {...settle} exit={{ opacity: 0, y: 12, scale: 0.99, transition: { duration: 0.18 } }}><section className="member-head"><div className="member-avatar"><UserRound /></div><div><p>สวัสดีค่ะ</p><h1>{user.name || user.email}</h1><span>{user.verified ? 'สมาชิกอิ่มใจ' : 'สมาชิกอิ่มใจ · โหมดพรีวิว'}</span></div><button onClick={logout}><LogOut /> ออกจากระบบ</button></section><section className="member-grid"><article><h2>ข้อมูลส่วนตัว</h2><label>ชื่อ<input defaultValue={user.name} /></label><label>เบอร์โทร<input defaultValue="" /></label><button className="secondary-button">บันทึกข้อมูล</button></article><article><h2>ที่อยู่จัดส่ง</h2><div className="saved-address"><MapPin /><div><b>ยังไม่มีที่อยู่</b><span>เพิ่มที่อยู่เพื่อชำระเงินได้เร็วขึ้น</span></div></div><button className="secondary-button">+ เพิ่มที่อยู่</button></article><LineAccountCard user={user} /><article className="member-orders"><h2>ออเดอร์ล่าสุด</h2>{orders.length ? <div>{orders.map((order) => <Link key={order.orderNumber} href={`/track?order=${encodeURIComponent(order.orderNumber)}`}><b>{order.orderNumber}</b><span>{order.status} · ฿{order.totals.total}</span></Link>)}</div> : <div className="empty-member-data"><Package /><span>ยังไม่มีประวัติออเดอร์</span></div>}</article></section></motion.main>;
+}
+
+function LineAccountCard({ user }: { user: SessionUser }) {
+  const [state, setState] = useState<LineAccountState | null>(
+    () => user.verified ? null : { linked: false, linkedAt: null },
+  );
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (!user.verified) return;
+    void getLineAccountState()
+      .then(setState)
+      .catch(() => setMessage('ตรวจสถานะ LINE ไม่สำเร็จ'));
+  }, [user.verified]);
+
+  const unlink = async () => {
+    if (!window.confirm('ยกเลิกการเชื่อม LINE กับสมาชิกเว็บนี้ใช่ไหม?')) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      await unlinkLineAccount();
+      setState({ linked: false, linkedAt: null });
+      setMessage('ยกเลิกการเชื่อม LINE แล้ว');
+    } catch {
+      setMessage('ยกเลิกการเชื่อมไม่สำเร็จ กรุณาลองใหม่');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return <article className="line-account-card">
+    <div className="line-account-title"><Link2 /><div><h2>LINE OA</h2><span>{state?.linked ? 'เชื่อมกับสมาชิกเว็บแล้ว' : state ? 'ยังไม่ได้เชื่อม' : 'กำลังตรวจสอบ…'}</span></div></div>
+    {state?.linked ? <>
+      <p>ถามใน LINE ว่า “ออเดอร์ถึงไหนแล้ว” ได้เลย น้องอิ่มใจจะตรวจเฉพาะออเดอร์ของบัญชีนี้ค่ะ</p>
+      <button className="secondary-button" type="button" onClick={unlink} disabled={busy}><Unlink /> {busy ? 'กำลังยกเลิก…' : 'ยกเลิกการเชื่อม'}</button>
+    </> : <>
+      <p>เปิดแชทร้านแล้วพิมพ์ <b>เชื่อมบัญชี</b> จากนั้นกดลิงก์ที่น้องอิ่มใจส่งให้ค่ะ</p>
+      <LineButton context={{ kind: 'general' }} />
+    </>}
+    {message && <small role="status">{message}</small>}
+  </article>;
 }

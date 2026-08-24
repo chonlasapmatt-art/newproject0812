@@ -32,6 +32,7 @@ import {
   cancelOrder,
   setOrderStatus,
   setPaymentStatus,
+  signedSlipUrl,
   summarise,
   useOrders,
   type OrderStatus,
@@ -40,6 +41,7 @@ import {
 import { isAdminListConfigured, isPreviewMode, setPreviewAdmin, useCan, useSession } from '../lib/session';
 import { getUnlockedServerSnapshot, getUnlockedSnapshot, subscribeUnlocked, unlock } from '../lib/dashboard-access';
 import { isSupabaseConfigured } from '../lib/supabase';
+import { showToast } from '../lib/toast';
 import { STORE_PROFILE, pendingRealData } from '../lib/store-profile';
 import { AdminSales } from './admin-sales';
 import { AdminUpdates } from './admin-updates';
@@ -214,6 +216,17 @@ function Overview({ orders }: { orders: StoredOrder[] }) {
 function Orders({ orders }: { orders: StoredOrder[] }) {
   const [filter, setFilter] = useState<'all' | OrderStatus>('all');
   const [query, setQuery] = useState('');
+  const viewSlip = async (path: string) => {
+    const popup = window.open('about:blank', '_blank');
+    try {
+      const url = await signedSlipUrl(path);
+      if (popup) popup.location.href = url;
+      else window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      popup?.close();
+      showToast('ยังเปิดรูปสลิปไม่ได้ กรุณาตรวจสิทธิ์พนักงานแล้วลองใหม่', 'error');
+    }
+  };
 
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('th');
@@ -302,7 +315,7 @@ function Orders({ orders }: { orders: StoredOrder[] }) {
                     <button
                       type="button"
                       className="ok"
-                      onClick={() => setPaymentStatus(order.orderNumber, 'paid', 'พนักงานตรวจสลิปด้วยตนเองแล้ว')}
+                      onClick={() => void setPaymentStatus(order.orderNumber, 'paid', 'พนักงานตรวจสลิปด้วยตนเองแล้ว').catch(() => showToast('บันทึกผลตรวจสลิปไม่สำเร็จ', 'error'))}
                     >
                       <Check size={14} /> ยืนยันยอด
                     </button>
@@ -310,13 +323,14 @@ function Orders({ orders }: { orders: StoredOrder[] }) {
                       type="button"
                       className="stop"
                       onClick={() =>
-                        setPaymentStatus(order.orderNumber, 'rejected', 'ยอดในสลิปไม่ตรงกับออเดอร์ กรุณาติดต่อร้าน')
+                        void setPaymentStatus(order.orderNumber, 'rejected', 'ยอดในสลิปไม่ตรงกับออเดอร์ กรุณาติดต่อร้าน').catch(() => showToast('บันทึกผลตรวจสลิปไม่สำเร็จ', 'error'))
                       }
                     >
                       <X size={14} /> ยอดไม่ตรง
                     </button>
                   </div>
                 )}
+                {order.slipPath && <button type="button" className="ghost" onClick={() => void viewSlip(order.slipPath!)}>ดูรูปสลิป</button>}
               </div>
 
               <div className="order-card-actions">
@@ -324,7 +338,7 @@ function Orders({ orders }: { orders: StoredOrder[] }) {
                   <span className="sr-only">สถานะออเดอร์ {order.orderNumber}</span>
                   <select
                     value={order.status}
-                    onChange={(event) => setOrderStatus(order.orderNumber, event.target.value as OrderStatus)}
+                    onChange={(event) => void setOrderStatus(order.orderNumber, event.target.value as OrderStatus).catch(() => showToast('เปลี่ยนสถานะออเดอร์ไม่สำเร็จ', 'error'))}
                     disabled={order.status === 'cancelled'}
                   >
                     {ORDER_FLOW.map((status) => (
@@ -333,7 +347,7 @@ function Orders({ orders }: { orders: StoredOrder[] }) {
                   </select>
                 </label>
                 {order.status !== 'cancelled' && (
-                  <button type="button" className="ghost" onClick={() => cancelOrder(order.orderNumber)}>
+                  <button type="button" className="ghost" onClick={() => void cancelOrder(order.orderNumber).catch(() => showToast('ยกเลิกออเดอร์ไม่สำเร็จ', 'error'))}>
                     <Ban size={14} /> ยกเลิก
                   </button>
                 )}
@@ -382,14 +396,14 @@ function MenuManager() {
               {isEdited(item.sku, overrides) && <em>แก้ไขจากเมนูตั้งต้น</em>}
             </div>
 
-            <NumberField label="ราคา" value={item.price} suffix="บาท" onCommit={(price) => updateMenuItem(item.sku, { price })} />
-            <NumberField label="สต็อก" value={item.stock} suffix="ที่" onCommit={(stock) => updateMenuItem(item.sku, { stock })} />
+            <NumberField label="ราคา" value={item.price} suffix="บาท" onCommit={(price) => void updateMenuItem(item.sku, { price }).catch(() => showToast('บันทึกราคาไม่สำเร็จ', 'error'))} />
+            <NumberField label="สต็อก" value={item.stock} suffix="ที่" onCommit={(stock) => void updateMenuItem(item.sku, { stock }).catch(() => showToast('บันทึกสต็อกไม่สำเร็จ', 'error'))} />
 
             <div className="menu-editor-actions">
               <button
                 type="button"
                 className={item.available ? 'on' : 'off'}
-                onClick={() => updateMenuItem(item.sku, { available: !item.available, stock: item.available ? item.stock : Math.max(item.stock, 1) })}
+                onClick={() => void updateMenuItem(item.sku, { available: !item.available, stock: item.available ? item.stock : Math.max(item.stock, 1) }).catch(() => showToast('เปลี่ยนสถานะเมนูไม่สำเร็จ', 'error'))}
               >
                 {item.available ? 'เปิดขาย' : 'ปิดขาย'}
               </button>
@@ -397,7 +411,7 @@ function MenuManager() {
                 type="button"
                 className="ghost"
                 disabled={!isEdited(item.sku, overrides)}
-                onClick={() => resetMenuItem(item.sku)}
+                onClick={() => void resetMenuItem(item.sku).catch(() => showToast('คืนค่าเมนูไม่สำเร็จ', 'error'))}
                 aria-label={`คืนค่า ${item.name}`}
               >
                 <RotateCcw size={14} /> คืนค่า

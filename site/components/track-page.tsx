@@ -222,8 +222,8 @@ export function TrackPage() {
   }, [orders, query]);
 
   const mine = useMemo(
-    () => ordersForAccount(orders, session.user?.email).slice(0, 6),
-    [orders, session.user?.email],
+    () => ordersForAccount(orders, session.user?.email, session.user?.id).slice(0, 6),
+    [orders, session.user?.email, session.user?.id],
   );
 
   return (

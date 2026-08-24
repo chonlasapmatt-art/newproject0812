@@ -8,7 +8,8 @@
 - เมนู 16 รายการจาก `data/Products.csv` เดิม ค้นหา กรอง และเรียงลำดับได้
 - ตัวเลือกความหวาน อุณหภูมิ ขนาด ระดับเผ็ด Add-on หมายเหตุ และสินค้าหมด
 - ตะกร้า Guest ใน `localStorage` เพิ่ม/ลด/ลบ คำนวณ Add-on คูปอง ค่าจัดส่ง และยอดขั้นต่ำ
-- Checkout แบบรับที่ร้านหรือจัดส่ง พร้อมเงินสดหรือ PromptPay/อัปโหลดสลิป
+- Checkout แบบรับที่ร้านหรือจัดส่ง พร้อมเงินสดหรือ PromptPay ที่ล็อกราคาและยอด QR จาก Server
+- อัปโหลดสลิปต้นฉบับเข้า Private Storage และส่ง QR reference ไปตรวจโดยไม่เชื่อผลจาก Browser
 - สร้างเลขออเดอร์แบบไม่ซ้ำและป้องกันกดซ้ำด้วย idempotency key
 - ติดตามออเดอร์พร้อม Timeline และสถานะการตรวจชำระเงิน
 - สมัคร เข้าสู่ระบบ ลืมรหัสผ่าน และ Session ผ่าน Supabase Auth เมื่อเชื่อม Project จริง
@@ -58,7 +59,8 @@
 | `lib/sales.ts` | สรุปยอดขายจากออเดอร์ |
 | `app/globals.css` | สไตล์ทั้งเว็บไฟล์เดียว |
 
-> หมายเหตุ: หน้าเว็บออนไลน์ทำงานในโหมด Guest ได้ทันที ส่วนสมาชิก ฐานข้อมูล Realtime อัปโหลดสลิป Admin และ AI จริงต้องเชื่อม Supabase ของร้านตามขั้นตอนด้านล่าง
+> หมายเหตุ: โหมดพรีวิวที่ไม่ตั้ง Supabase ยังใช้ข้อมูลในเบราว์เซอร์ได้ ส่วน Production ใช้
+> Supabase เป็นแหล่งข้อมูลหลักสำหรับสมาชิก ออเดอร์ เมนู Realtime สลิป และแดชบอร์ด
 
 ## โครงสร้างสำคัญ
 
@@ -89,7 +91,7 @@ menu-image-prompts.json  Prompt สำหรับภาพเมนูจริ
 | `OPENAI_API_KEY` | `ai-assistant` Edge Function | ห้าม |
 | `OPENAI_MODEL` | Edge Function | ห้ามเปิดเผยโดยไม่จำเป็น |
 | `CORS_ALLOWED_ORIGINS` | Edge Functions | ไม่ใช่ Secret |
-| `PROMPTPAY_ID` | Edge Function/Private setting | ห้ามใส่จริงใน Repository |
+| `PROMPTPAY_ID` | Edge Function ใช้ตรวจบัญชีผู้รับ | ได้ (เป็นปลายทางรับเงิน ไม่ใช่รหัสลับ) |
 | `NEXT_PUBLIC_LINE_OA_ID` | ปุ่มทักไลน์ | ได้ (เป็น ID สาธารณะของร้าน) |
 | `NEXT_PUBLIC_LINE_OA_LINK` | ปุ่มทักไลน์ (ลิงก์ lin.ee — ชนะ ID ถ้าใส่ทั้งคู่) | ได้ |
 | `NEXT_PUBLIC_N8N_WEBHOOK_URL` | ส่งออเดอร์เข้า n8n | ได้ แต่ดูหมายเหตุด้านล่าง |
@@ -194,10 +196,10 @@ key เดียวกันเรียกได้จากทั้ง n8n �
 ## Tests
 
 ```bash
-npm test          # 113 unit tests
+npm test          # 119 unit tests
 npm run lint
 npm run build
-npm run test:e2e  # 86 tests (desktop + mobile)
+npm run test:e2e  # 96 tests (desktop + mobile)
 ```
 
 E2E รันกับไฟล์ที่ export จริง ไม่ใช่ dev server เพราะไฟล์ที่ export คือสิ่งที่ deploy จริง
@@ -243,7 +245,7 @@ base path ไม่ได้เขียนตายในโค้ด แต่
    ยืนยันอีเมล/รีเซ็ตรหัสผ่านจะพาไปที่ `localhost` หรือโดเมนเก่าที่ตั้งไว้ตอนสร้าง project
    (อ่านค่าปัจจุบันมาก่อนแล้วค่อยแก้เฉพาะ 2 ช่องนี้ ไม่แตะการตั้งค่า Auth อื่น)
 4. ส่ง function secret ที่มีใน repository ให้ Supabase
-5. Deploy `create-order`, `verify-slip`, `ai-assistant`
+5. Deploy `create-order`, `verify-slip`, `ai-assistant`, `line-orders`
 
 ### Secret ที่ต้องมี
 
@@ -253,9 +255,23 @@ base path ไม่ได้เขียนตายในโค้ด แต่
 | `SLIPOK_API_KEY` / `SLIPOK_BRANCH_ID` | ไม่ | SlipOK — ถ้าไม่ใส่ สลิปจะรอพนักงานตรวจมือ ออเดอร์ไม่หาย |
 | `PROMPTPAY_ID` | ไม่ | ถ้าไม่ใส่จะใช้ค่าใน workflow |
 | `OPENAI_API_KEY` | ไม่ | น้องอิ่มใจตอบในเว็บเองอยู่แล้ว ไม่ต้องใช้ |
+| `N8N_SHARED_SECRET` | **ใช่ เมื่อเชื่อม LINE** | สุ่มอย่างน้อย 32 bytes; ค่าเดียวกันอยู่ใน Supabase Function Secrets และ n8n Header Auth เท่านั้น |
 
 ใช้ **token อันเดียว** ไม่ต้องใช้รหัสผ่านฐานข้อมูล เพราะ SQL วิ่งผ่าน Management API
 ไม่ได้ต่อ Postgres ตรง — ผลพลอยได้คือถ้า deploy พังกลางคัน ฐานข้อมูลไม่ค้างในสภาพที่รันซ้ำไม่ได้
+
+## เชื่อมออเดอร์เว็บกับ LINE OA
+
+ใช้ Account Linking ทางการของ LINE ไม่จับคู่ด้วยเบอร์โทรหรือให้ลูกค้าพิมพ์อีเมลในแชท:
+
+1. ลูกค้าพิมพ์ `เชื่อมบัญชี` ใน LINE OA
+2. n8n ขอ link token จาก LINE และส่งลิงก์หน้า `/account/link-line/`
+3. ลูกค้าล็อกอินเว็บและกดยืนยัน; Supabase เก็บเฉพาะ hash ของ nonce ที่ใช้ครั้งเดียวและหมดอายุ 10 นาที
+4. LINE ส่งผลยืนยันกลับ webhook; n8n เรียก `line-orders` ด้วย `x-n8n-secret`
+5. หลังเชื่อม น้องอิ่มใจอ่านได้เฉพาะออเดอร์ Supabase ของสมาชิกคนนั้น ไม่มีเบอร์โทรหรือที่อยู่ในผลลัพธ์
+
+ลูกค้ายกเลิกการเชื่อมได้จากหน้าสมาชิก ระบบเดิมที่สั่งผ่าน LINE/Google Sheets ยังทำงานต่อ
+ระหว่างเปลี่ยนผ่าน และ `get_order_by_id` เดิมถูกจำกัดด้วย LINE user id เพิ่มเติมแล้ว
 
 ## จุดที่เจ้าของร้านต้องใส่ข้อมูลจริง
 
@@ -273,7 +289,7 @@ base path ไม่ได้เขียนตายในโค้ด แต่
 | **เปิดแชทใน LINE OA Manager** | ลูกค้ากดปุ่มแล้วเพิ่มเพื่อนได้ แต่ทักหาร้านไม่ได้ |
 | `NEXT_PUBLIC_N8N_WEBHOOK_URL` | ออเดอร์ไม่ไหลเข้า n8n (ระบบพร้อมแล้ว รอ URL) |
 | SlipOK API key + branch id | ต้องตรวจสลิปด้วยมือ |
-| PromptPay ID จริงของร้าน | QR ใช้ค่า default ใน workflow |
+| PromptPay ID จริงของร้าน | ตั้งแล้วเป็น `0998756879` ทั้งเว็บและตัวตรวจบัญชีผู้รับ |
 | ภาพเมนู WebP/PNG จริง | ใช้ภาพ placeholder จาก `menu-image-prompts.json` |
 | Domain จริง + CORS allowlist | ใช้ URL ของ GitHub Pages |
 
@@ -285,13 +301,15 @@ base path ไม่ได้เขียนตายในโค้ด แต่
 - **แผนที่ยังไม่ได้ยืนยันด้วยตาบนเครื่องจริง** — sandbox ที่พัฒนาบล็อก Google
   ถ้าไม่ขึ้น เปลี่ยนไป OpenStreetMap ได้ ไม่ต้องใช้ key เหมือนกัน
 - **รีวิวหน้าแรกเป็นตัวอย่าง** ยังไม่ใช่รีวิวลูกค้าจริง
-- **ออเดอร์ยังไม่ซิงก์ข้ามอุปกรณ์เต็มรูปแบบ** จนกว่าจะยืนยันว่า `create-order` ทำงานครบวงจร
+- **โค้ดออเดอร์ Realtime/Private Storage ชุดใหม่ยังไม่ขึ้น Production** จนกว่าจะอนุมัติ
+  Push/Publish และทดสอบกับ Supabase Project จริง
 
 ## หลักความปลอดภัยสำคัญ
 
 - Backend คำนวณราคาจากฐานข้อมูลใหม่ทุกครั้ง ห้ามเชื่อยอดจาก Frontend
 - Order RPC ทำงานใน Transaction และรับ idempotency key
 - ผู้ใช้ดูเฉพาะข้อมูลของตัวเอง ส่วน staff/admin ตรวจด้วย RLS ทุก API
-- สลิปอยู่ใน Private bucket และยังเป็น `pending_verification` จนพนักงานยืนยัน
+- สลิปอยู่ใน Private bucket; เป็น `verified` ได้เมื่อ provider ยืนยันยอดและบัญชีผู้รับตรงกัน
+  กรณีอ่านไม่ได้/provider ไม่พร้อมจะคง `pending_verification` ให้พนักงานตรวจ ไม่ทำออเดอร์หาย
 - AI ไม่มีสิทธิ์แก้ราคา ยืนยันชำระเงิน หรือสร้างออเดอร์สุดท้ายแทนลูกค้า
 - Error ตอบแบบทั่วไปและไม่ส่งรายละเอียดระบบหรือ Secret กลับ Browser
