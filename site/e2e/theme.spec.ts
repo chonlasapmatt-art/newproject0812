@@ -192,6 +192,21 @@ test.describe('fixed-light panels stay readable in dark mode', () => {
     await page.waitForTimeout(600);
     expect(await hasVisibleText(badge)).toBe(true);
   });
+
+  // .contact-card.is-primary (the LINE card) carries its own light-mint
+  // gradient in light mode, same idea as the panels above but the opposite
+  // direction: this one is the card that is NOT supposed to go fully dark.
+  // --ink-faint had no dark-mode value at all, so .contact-label fell back to
+  // a hardcoded tone that read fine against a plain dark card but nearly
+  // vanished against this card's lighter corner.
+  test('the LINE contact card label', async ({ page }) => {
+    await page.goto('/contact');
+    await page.waitForLoadState('networkidle');
+    const card = page.locator('.contact-card.is-primary');
+    await card.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(600);
+    expect(await hasVisibleText(card.locator('.contact-label'))).toBe(true);
+  });
 });
 
 /**

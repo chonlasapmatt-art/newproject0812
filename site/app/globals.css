@@ -13,6 +13,7 @@
 :root, [data-theme='light'] {
   --ink: #33261f;
   --ink-muted: #7d6a5e;
+  --ink-faint: #9a897a;
   --coffee: #6c3f2b;
   --cream: #f7f0e5;
   --paper: #fffdf8;
@@ -27,6 +28,7 @@
 [data-theme='soft'] {
   --ink: #362a22;
   --ink-muted: #7a6a5e;
+  --ink-faint: #a3927f;
   --coffee: #6c3f2b;
   --cream: #ece2d2;
   --paper: #f6efe3;
@@ -43,6 +45,7 @@
 [data-theme='dark'] {
   --ink: #f1e7d9;
   --ink-muted: #b3a294;
+  --ink-faint: #8f8071;
   --coffee: #e8dccb;
   --cream: #2a221d;
   --paper: #1c1714;
@@ -351,6 +354,12 @@ button { color: inherit; }
 [data-theme='dark'] .menu-toolbar { background: rgba(28,23,20,.94); }
 [data-theme='dark'] .hero { background: var(--cream); }
 [data-theme='dark'] .marquee-strip { background: var(--cream); }
+/* .contact-card.is-primary's gradient starts from a fixed light mint
+   (#eef3ea) meant to sit next to a paper-white card — on a dark card the
+   same corner glares, and .contact-label's near-brown text (fine on
+   var(--paper)) went almost unreadable exactly there. A dark-appropriate
+   version of the same idea: sage tinted into paper, never lighter than it. */
+[data-theme='dark'] .contact-card.is-primary { background: linear-gradient(150deg, color-mix(in srgb, var(--sage) 20%, var(--paper)), var(--paper) 70%); }
 /* Opposite call from .hero above, on purpose: those stay a bright accent
    against dark chrome, but a dish's tone is a photo backdrop sitting flush
    against the product modal's now-dark copy panel — full brightness there
