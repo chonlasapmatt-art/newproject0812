@@ -49,6 +49,9 @@ jobs:
       # still set because it is what the contact card prints; the link is what
       # it points at.
       NEXT_PUBLIC_LINE_OA_LINK: ${{ vars.NEXT_PUBLIC_LINE_OA_LINK || 'https://lin.ee/Ph3KcFO' }}
+      # Public wake-up endpoint. The browser sends only an event and order
+      # number; n8n reads the trusted status and recipient from Supabase.
+      NEXT_PUBLIC_N8N_WEBHOOK_URL: ${{ vars.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://shadow0812.app.n8n.cloud/webhook/imjai-web-order-events' }}
       NEXT_PUBLIC_ADMIN_PREVIEW_MODE: "false"
       # Deliberately has no fallback: an email address should not sit in a
       # public repository. Set the repository variable to switch the
