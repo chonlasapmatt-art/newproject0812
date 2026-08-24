@@ -36,6 +36,7 @@ import {
   summarise,
   useOrders,
   type OrderStatus,
+  type PaymentStatus,
   type StoredOrder,
 } from '../lib/orders';
 import { isAdminListConfigured, isPreviewMode, setPreviewAdmin, useCan, useSession } from '../lib/session';
@@ -167,9 +168,9 @@ function Overview({ orders }: { orders: StoredOrder[] }) {
         <article>
           <span><Wallet /></span>
           <div>
-            <small>รอตรวจสลิป</small>
-            <h2>{stats.awaitingPayment}</h2>
-            <p>{stats.awaitingPayment ? 'ตรวจที่แท็บออเดอร์' : 'ไม่มีรายการค้าง'}</p>
+            <small>ชำระแล้ววันนี้</small>
+            <h2>{stats.paidCount}</h2>
+            <p>{stats.unpaidCount} ยังไม่จ่าย · {stats.awaitingPayment} รอตรวจ</p>
           </div>
         </article>
       </div>
@@ -214,7 +215,8 @@ function Overview({ orders }: { orders: StoredOrder[] }) {
 }
 
 function Orders({ orders }: { orders: StoredOrder[] }) {
-  const [filter, setFilter] = useState<'all' | OrderStatus>('all');
+  const [orderFilter, setOrderFilter] = useState<'all' | OrderStatus>('all');
+  const [paymentFilter, setPaymentFilter] = useState<'all' | PaymentStatus>('all');
   const [query, setQuery] = useState('');
   const viewSlip = async (path: string) => {
     const popup = window.open('about:blank', '_blank');
@@ -231,11 +233,12 @@ function Orders({ orders }: { orders: StoredOrder[] }) {
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('th');
     return orders.filter((order) => {
-      if (filter !== 'all' && order.status !== filter) return false;
+      if (orderFilter !== 'all' && order.status !== orderFilter) return false;
+      if (paymentFilter !== 'all' && order.paymentStatus !== paymentFilter) return false;
       if (!needle) return true;
       return `${order.orderNumber} ${order.name} ${order.phone}`.toLocaleLowerCase('th').includes(needle);
     });
-  }, [orders, filter, query]);
+  }, [orders, orderFilter, paymentFilter, query]);
 
   return (
     <>
@@ -250,15 +253,30 @@ function Orders({ orders }: { orders: StoredOrder[] }) {
             placeholder="ค้นหาเลขออเดอร์ ชื่อ หรือเบอร์โทร"
           />
         </div>
+        <small className="admin-filter-label">สถานะออเดอร์</small>
         <div className="admin-chips">
-          <button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>
+          <button type="button" className={orderFilter === 'all' ? 'active' : ''} onClick={() => setOrderFilter('all')}>
             ทั้งหมด ({orders.length})
           </button>
           {ORDER_FLOW.map((status) => {
             const count = orders.filter((order) => order.status === status).length;
             return (
-              <button type="button" key={status} className={filter === status ? 'active' : ''} onClick={() => setFilter(status)}>
+              <button type="button" key={status} className={orderFilter === status ? 'active' : ''} onClick={() => setOrderFilter(status)}>
                 {ORDER_STATUS_LABEL[status]} ({count})
+              </button>
+            );
+          })}
+        </div>
+        <small className="admin-filter-label">สถานะการชำระเงิน</small>
+        <div className="admin-chips" aria-label="กรองตามสถานะการชำระเงิน">
+          <button type="button" className={paymentFilter === 'all' ? 'active' : ''} onClick={() => setPaymentFilter('all')}>
+            ทุกสถานะ ({orders.length})
+          </button>
+          {(Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[]).map((status) => {
+            const count = orders.filter((order) => order.paymentStatus === status).length;
+            return (
+              <button type="button" key={status} className={paymentFilter === status ? 'active' : ''} onClick={() => setPaymentFilter(status)}>
+                {PAYMENT_STATUS_LABEL[status]} ({count})
               </button>
             );
           })}
@@ -327,6 +345,17 @@ function Orders({ orders }: { orders: StoredOrder[] }) {
                       }
                     >
                       <X size={14} /> ยอดไม่ตรง
+                    </button>
+                  </div>
+                )}
+                {order.payment === 'cash' && order.paymentStatus === 'unpaid' && (
+                  <div className="order-card-verify">
+                    <button
+                      type="button"
+                      className="ok"
+                      onClick={() => void setPaymentStatus(order.orderNumber, 'paid', 'พนักงานรับเงินสดเรียบร้อยแล้ว').catch(() => showToast('บันทึกรับเงินสดไม่สำเร็จ', 'error'))}
+                    >
+                      <Check size={14} /> รับเงินสดแล้ว
                     </button>
                   </div>
                 )}
