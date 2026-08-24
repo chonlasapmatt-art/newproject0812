@@ -130,7 +130,7 @@ function LineAccountCard({ user }: { user: SessionUser }) {
   return <article className="line-account-card">
     <div className="line-account-title"><Link2 /><div><h2>LINE OA</h2><span>{state?.linked ? 'เชื่อมกับสมาชิกเว็บแล้ว' : state ? 'ยังไม่ได้เชื่อม' : 'กำลังตรวจสอบ…'}</span></div></div>
     {state?.linked ? <>
-      <p>ถามใน LINE ว่า “ออเดอร์ถึงไหนแล้ว” ได้เลย น้องอิ่มใจจะตรวจเฉพาะออเดอร์ของบัญชีนี้ค่ะ</p>
+      <p>ถามใน LINE ว่า “ออเดอร์ถึงไหนแล้ว” ได้เลย และเมื่อร้านเปลี่ยนสถานะออเดอร์ ระบบจะแจ้ง LINE นี้อัตโนมัติค่ะ</p>
       <button className="secondary-button" type="button" onClick={unlink} disabled={busy}><Unlink /> {busy ? 'กำลังยกเลิก…' : 'ยกเลิกการเชื่อม'}</button>
     </> : <>
       <p>เปิดแชทร้านแล้วพิมพ์ <b>เชื่อมบัญชี</b> จากนั้นกดลิงก์ที่น้องอิ่มใจส่งให้ค่ะ</p>
