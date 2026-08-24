@@ -1,0 +1,5 @@
+User-Agent: *
+Allow: /
+Disallow: /admin
+
+Sitemap: https://chonlasapmatt-art.github.io/newproject0812/sitemap.xml
