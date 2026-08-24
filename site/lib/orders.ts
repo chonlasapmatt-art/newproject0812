@@ -394,6 +394,8 @@ export async function setOrderStatus(orderNumber: string, status: OrderStatus) {
   });
   if (error) { await refreshOrders(); throw error; }
   await refreshOrders();
+  const updated = findOrder(orderNumber);
+  if (updated) void import('./n8n').then(({ notify }) => notify('order.status_changed', updated));
 }
 
 /**
@@ -417,6 +419,8 @@ export async function setPaymentStatus(orderNumber: string, paymentStatus: Payme
   });
   if (error) { await refreshOrders(); throw error; }
   await refreshOrders();
+  const updated = findOrder(orderNumber);
+  if (updated) void import('./n8n').then(({ notify }) => notify('payment.slip_checked', updated));
 }
 
 export async function cancelOrder(orderNumber: string, reason = 'ร้านยกเลิกออเดอร์นี้') {
@@ -432,6 +436,8 @@ export async function cancelOrder(orderNumber: string, reason = 'ร้านย
   });
   if (error) { await refreshOrders(); throw error; }
   await refreshOrders();
+  const updated = findOrder(orderNumber);
+  if (updated) void import('./n8n').then(({ notify }) => notify('order.cancelled', updated));
 }
 
 /** Orders belonging to one signed-in customer, newest first. */
