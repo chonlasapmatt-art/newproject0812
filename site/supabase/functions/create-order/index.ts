@@ -16,6 +16,29 @@ const cors = (origin: string | null) => ({
 const reply = (body: unknown, status: number, headers: Record<string, string>) =>
   new Response(JSON.stringify(body), { status, headers });
 
+/**
+ * `create_order_secure` raises a plain-text exception for everything from an
+ * empty cart to a sold-out item, and Postgres itself raises one more —
+ * `no_data_found` (P0002) — when the `select ... for update` for a line finds
+ * no matching, available, in-stock row. Collapsing all of that into one
+ * "unable_to_create_order" left the checkout page with nothing to tell a
+ * customer apart from "try again", even for a sold-out item that trying again
+ * can never fix. This turns the ones worth telling apart into a stable code;
+ * anything unrecognised still falls back to the generic one rather than
+ * leaking a raw database message to the browser.
+ */
+function mapOrderError(error: { code?: string; message?: string }): string {
+  if (error?.code === 'P0002') return 'item_unavailable';
+  const message = String(error?.message ?? '');
+  if (/insufficient stock/i.test(message)) return 'item_unavailable';
+  if (/too many orders|daily order limit/i.test(message)) return 'rate_limited';
+  if (/cart empty|too many items/i.test(message)) return 'invalid_cart';
+  if (/delivery address/i.test(message)) return 'invalid_address';
+  if (/invalid phone|customer required/i.test(message)) return 'invalid_customer';
+  if (/invalid option|invalid add-on/i.test(message)) return 'invalid_selection';
+  return 'unable_to_create_order';
+}
+
 Deno.serve(async (request) => {
   const origin = request.headers.get('origin');
   const headers = { ...cors(origin), 'Content-Type': 'application/json' };
@@ -81,7 +104,7 @@ Deno.serve(async (request) => {
     const { data, error } = await client.rpc('create_order_secure', { p_payload: payload });
     if (error) {
       console.error('create-order rpc failed', error.code, error.message);
-      return reply({ error: 'unable_to_create_order' }, 400, headers);
+      return reply({ error: mapOrderError(error) }, 400, headers);
     }
     return reply({
       orderId: data.order_id,
