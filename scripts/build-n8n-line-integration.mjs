@@ -245,6 +245,119 @@ return [{ json: {
   },
 ];
 
+// Proactive website-order notifications use the same workflow and the same
+// credentials as the inbound LINE assistant. The webhook is deliberately only
+// a wake-up signal: trusted recipients, amounts and states are claimed from the
+// Supabase outbox and acknowledged only after LINE accepts the push.
+const statusNodes = [
+  {
+    parameters: { httpMethod: 'POST', path: 'imjai-web-order-events', options: {} },
+    id: '70824ef4-b122-4af2-9f86-177ff1b80801',
+    name: 'Website Order Event',
+    type: 'n8n-nodes-base.webhook',
+    typeVersion: 2.1,
+    position: [1056, 976],
+    webhookId: 'imjai-web-order-events',
+  },
+  {
+    parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 30 }] } },
+    id: '70824ef4-b122-4af2-9f86-177ff1b80802',
+    name: 'LINE Status Fallback',
+    type: 'n8n-nodes-base.scheduleTrigger',
+    typeVersion: 1.2,
+    position: [1056, 1168],
+  },
+  httpNode(
+    '70824ef4-b122-4af2-9f86-177ff1b80803',
+    'Claim LINE Status Notifications',
+    [1328, 1072],
+    jsonPost(
+      'https://vshufucommkfgmdtaodq.supabase.co/functions/v1/line-orders',
+      "={{ JSON.stringify({ action: 'claimNotifications', limit: 30 }) }}",
+      { authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth' },
+    ),
+    bridgeCredential,
+    { onError: 'stopWorkflow' },
+  ),
+  {
+    parameters: {
+      jsCode: `const notifications = Array.isArray($json.notifications) ? $json.notifications : [];
+
+const textFor = (item) => {
+  const order = item.orderNumber || '-';
+  const amount = Number(item.payableAmount || 0).toFixed(2);
+  switch (item.event) {
+    case 'order_placed':
+      return '🧾 ร้านได้รับออเดอร์ ' + order + ' แล้วค่ะ\\nยอดรวม ฿' + amount + '\\nติดตามสถานะได้ที่หน้าเว็บไซต์หรือตอบกลับแชทนี้ได้เลยค่ะ';
+    case 'payment_verified':
+      return '✅ ยืนยันการชำระเงินออเดอร์ ' + order + ' เรียบร้อยแล้วค่ะ\\nยอดชำระ ฿' + amount + '\\nขอบพระคุณที่อุดหนุนร้านอิ่มใจนะคะ 💛 ร้านเริ่มดำเนินการออเดอร์ให้แล้วค่ะ';
+    case 'payment_rejected':
+      return '⚠️ สลิปของออเดอร์ ' + order + ' ยังไม่ผ่านการตรวจค่ะ\\n' + (item.paymentNote || 'กรุณาตรวจสอบยอดและบัญชีปลายทาง แล้วส่งสลิปใหม่อีกครั้งค่ะ');
+    case 'order_confirmed':
+      return '✅ ร้านยืนยันออเดอร์ ' + order + ' แล้วค่ะ กำลังจัดคิวเตรียมอาหารให้นะคะ';
+    case 'order_preparing':
+      return '🍳 ออเดอร์ ' + order + ' กำลังปรุงแล้วค่ะ';
+    case 'order_ready':
+      return item.fulfilment === 'delivery'
+        ? '📦 ออเดอร์ ' + order + ' พร้อมจัดส่งแล้วค่ะ'
+        : '🛍️ ออเดอร์ ' + order + ' พร้อมรับที่ร้านแล้วค่ะ';
+    case 'order_out_for_delivery':
+      return '🛵 ออเดอร์ ' + order + ' กำลังจัดส่งค่ะ กรุณาเตรียมรับโทรศัพท์นะคะ';
+    case 'order_completed':
+      return '💛 ออเดอร์ ' + order + ' เสร็จสมบูรณ์แล้วค่ะ ขอบพระคุณที่อุดหนุนร้านอิ่มใจนะคะ';
+    case 'order_cancelled':
+      return 'ออเดอร์ ' + order + ' ถูกยกเลิกแล้วค่ะ หากมีข้อสงสัยตอบกลับแชทนี้เพื่อให้ทีมงานช่วยตรวจสอบได้เลยค่ะ';
+    default:
+      return 'ออเดอร์ ' + order + ' มีการอัปเดตสถานะค่ะ ตรวจสอบรายละเอียดได้ที่หน้าเว็บไซต์หรือตอบกลับแชทนี้ค่ะ';
+  }
+};
+
+return notifications
+  .filter((item) => item && item.id && item.lineUserId)
+  .map((item) => ({ json: { ...item, message: textFor(item) } }));`,
+    },
+    id: '70824ef4-b122-4af2-9f86-177ff1b80804',
+    name: 'Build LINE Status Message',
+    type: 'n8n-nodes-base.code',
+    typeVersion: 2,
+    position: [1584, 1072],
+  },
+  httpNode(
+    '70824ef4-b122-4af2-9f86-177ff1b80805',
+    'Push LINE Order Status',
+    [1840, 1072],
+    jsonPost(
+      'https://api.line.me/v2/bot/message/push',
+      "={{ JSON.stringify({ to: $json.lineUserId, messages: [{ type: 'text', text: $json.message }] }) }}",
+      { authentication: 'genericCredentialType', genericAuthType: 'httpBearerAuth' },
+    ),
+    lineBearer,
+    { onError: 'continueErrorOutput' },
+  ),
+  httpNode(
+    '70824ef4-b122-4af2-9f86-177ff1b80806',
+    'Acknowledge LINE Status',
+    [2096, 1008],
+    jsonPost(
+      'https://vshufucommkfgmdtaodq.supabase.co/functions/v1/line-orders',
+      "={{ JSON.stringify({ action: 'ackNotifications', ids: [ $('Build LINE Status Message').item.json.id ] }) }}",
+      { authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth' },
+    ),
+    bridgeCredential,
+    { onError: 'stopWorkflow' },
+  ),
+  httpNode(
+    '70824ef4-b122-4af2-9f86-177ff1b80807',
+    'Discord Alert (LINE Status)',
+    [2096, 1168],
+    jsonPost(
+      "={{ $('⚙️ Config').first().json.DISCORD_WEBHOOK_URL }}",
+      "={{ JSON.stringify({ content: '@here ⚠️ ส่งสถานะออเดอร์เข้า LINE ไม่สำเร็จ\\n🧾 Execution: #' + $execution.id + '\\n📦 Order: ' + $('Build LINE Status Message').item.json.orderNumber + '\\n📌 ระบบเก็บคิวไว้และจะลองใหม่อัตโนมัติ' }) }}",
+    ),
+  ),
+];
+added.push(...statusNodes);
+
 const addedNames = new Set(added.map((item) => item.name));
 workflow.nodes = workflow.nodes.filter((item) => !addedNames.has(item.name));
 workflow.nodes.push(...added);
@@ -271,6 +384,14 @@ workflow.connections['Website Link Completed?'] = { main: [
 workflow.connections['Is Image? (สลิป)'].main[1] = [{ node: 'Fetch Website Orders', type: 'main', index: 0 }];
 workflow.connections['Fetch Website Orders'] = { main: [[{ node: 'Build Website Order Context', type: 'main', index: 0 }]] };
 workflow.connections['Build Website Order Context'] = { main: [[{ node: 'AI Agent — น้องอิ่มใจ', type: 'main', index: 0 }]] };
+workflow.connections['Website Order Event'] = { main: [[{ node: 'Claim LINE Status Notifications', type: 'main', index: 0 }]] };
+workflow.connections['LINE Status Fallback'] = { main: [[{ node: 'Claim LINE Status Notifications', type: 'main', index: 0 }]] };
+workflow.connections['Claim LINE Status Notifications'] = { main: [[{ node: 'Build LINE Status Message', type: 'main', index: 0 }]] };
+workflow.connections['Build LINE Status Message'] = { main: [[{ node: 'Push LINE Order Status', type: 'main', index: 0 }]] };
+workflow.connections['Push LINE Order Status'] = { main: [
+  [{ node: 'Acknowledge LINE Status', type: 'main', index: 0 }],
+  [{ node: 'Discord Alert (LINE Status)', type: 'main', index: 0 }],
+] };
 
 workflow.name = 'อิ่มอกอิ่มใจ - web + LINE linked';
 workflow.active = false;
