@@ -58,9 +58,9 @@ begin
   delete from public.line_link_nonces
    where expires_at < now()-interval '1 day';
 
-  v_nonce := encode(gen_random_bytes(32),'hex');
+  v_nonce := encode(extensions.gen_random_bytes(32),'hex');
   insert into public.line_link_nonces(user_id,nonce_hash,expires_at)
-    values(v_user,encode(digest(v_nonce,'sha256'),'hex'),now()+interval '10 minutes');
+    values(v_user,encode(extensions.digest(v_nonce,'sha256'),'hex'),now()+interval '10 minutes');
   return v_nonce;
 end; $$;
 
@@ -81,7 +81,7 @@ begin
 
   select * into v_link
     from public.line_link_nonces
-   where nonce_hash=encode(digest(p_nonce,'sha256'),'hex')
+   where nonce_hash=encode(extensions.digest(p_nonce,'sha256'),'hex')
      and consumed_at is null
    for update;
   if not found or v_link.expires_at < now() then
