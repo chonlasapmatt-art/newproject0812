@@ -52,7 +52,7 @@ describe('forwarding an order to n8n', () => {
     expect(queued()).toEqual([]);
   });
 
-  it('posts the order in a shape the workflow can read', async () => {
+  it('posts only a wake signal and order reference', async () => {
     const fetchSpy = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal('fetch', fetchSpy);
     const n8n = await load();
@@ -62,11 +62,21 @@ describe('forwarding an order to n8n', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [url, init] = fetchSpy.mock.calls[0];
     expect(url).toBe(URL);
+    expect(init.headers).toEqual({ 'Content-Type': 'text/plain;charset=UTF-8' });
     const body = JSON.parse(init.body);
     expect(body.event).toBe('order.placed');
     expect(body.order.orderNumber).toBe('IMJ-0001');
-    expect(body.order.customer.phone).toBe('0800000000');
-    expect(body.order.items[0]).toMatchObject({ sku: 'latte', quantity: 2, addOns: ['ช็อตพิเศษ'] });
+    expect(body.order).toEqual({ orderNumber: 'IMJ-0001' });
+    expect(init.mode).toBe('no-cors');
+    expect(queued()).toEqual([]);
+  });
+
+  it('accepts the opaque response returned by a no-cors webhook', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, type: 'opaque' }));
+    const n8n = await load();
+
+    await n8n.notify('order.placed', order());
+
     expect(queued()).toEqual([]);
   });
 
